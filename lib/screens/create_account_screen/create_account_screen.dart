@@ -151,18 +151,20 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                   onChanged: (value) =>
                       setState(() => isKeepSignedIn = value ?? false),
                 ),
-                const Text.rich(
-                    TextSpan(
-                      text: "By Continuing, you agree to out ",
-                      style: const TextStyle(color: Colors.grey),
-                      children: [
-                        TextSpan(
-                          text: 'Terms & Condition',
-                          style: const TextStyle(color: Colors.blue),
-                          // Add navigation action here
-                        ),
-                      ],
-                    ),
+                Expanded(
+                  child: const Text.rich(
+                      TextSpan(
+                        text: "By Continuing, you agree to out ",
+                        style: const TextStyle(color: Colors.grey),
+                        children: [
+                          TextSpan(
+                            text: 'Terms & Condition',
+                            style: const TextStyle(color: Colors.blue),
+                            // Add navigation action here
+                          ),
+                        ],
+                      ),
+                  ),
                 ),
               ],
             ),

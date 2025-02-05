@@ -1,120 +1,67 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:primax_lyalaty_program/screens/home_screen/home_screen.dart';
+import 'package:primax_lyalaty_program/screens/home_screen/stores_map_screen.dart';
 
+import '../home_screen/news_event_screen.dart';
+import '../home_screen/platform_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
-  const DashboardScreen({Key? key}) : super(key: key);
-
   @override
-  State<DashboardScreen> createState() => _DashboardScreenState();
+  _DashboardScreenState createState() => _DashboardScreenState();
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  final scaffoldKey = GlobalKey<ScaffoldState>();
-  int selectedIndex = 0;
+  int _selectedIndex = 0; // Default to HomeFragment
 
-  late final List<Widget> _fragments;
+  final List<Widget> _screens = [
+    HomeScreen(),
+    PlatformScreen(),
+    StoresMapScreen(),
+    NewsEventScreen(),
+  ];
 
-  @override
-  void initState() {
-    // setStatusBarColor(Colors.transparent);
-    _fragments = [
-      HomeScreen(),
-      HomeScreen(),
-      HomeScreen(),
-      HomeScreen(),
-      HomeScreen(),
-
-    ];
-    super.initState();
+  void _onItemTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      key: scaffoldKey,
-      body: _fragments[selectedIndex],
-      bottomNavigationBar: Container(
-        margin: EdgeInsets.only(top: 4),
-        padding: EdgeInsets.only(top: 8),
-        decoration: BoxDecoration(
-          boxShadow: [
-            const BoxShadow(
-              color: Colors.black12,
-              blurRadius: 5.0,
-              spreadRadius: 1.0,
-            ),
-          ],
-          color: Colors.white,
-          borderRadius: BorderRadius.only(topLeft: Radius.circular(20),topRight: Radius.circular(20))
+        body: IndexedStack(
+          index: _selectedIndex,
+          children: _screens,
         ),
-        child: BottomNavigationBar(
-          landscapeLayout: BottomNavigationBarLandscapeLayout.centered,
-          backgroundColor: Colors.white,
-          selectedFontSize: 14,
-          elevation: 0,
-          selectedItemColor: Colors.black,
-          unselectedLabelStyle: const TextStyle(color: Colors.grey,fontSize: 12),
-          selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500,color: Colors.black),
-          showSelectedLabels: true,
-          type: BottomNavigationBarType.fixed,
-          items: [
-            _buildBottomNavigationBarItem('calculator', 'calculator', 'Calculator'),
-            _buildBottomNavigationBarItem(
-                'platform', 'platform', 'Platform'),
-            _buildBottomNavigationBarItem1(
-                'home', 'home', ""),
-            _buildBottomNavigationBarItem(
-                'stores', 'stores', "stores"),
-            _buildBottomNavigationBarItem('options', 'options', "Options"),
-          ],
-          onTap: (val) {
+        bottomNavigationBar: ClipRRect(
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(20.0),
+            topRight: Radius.circular(20.0),
+          ),
+          child: BottomNavigationBar(
+            backgroundColor: Colors.white,
+            type: BottomNavigationBarType.fixed,
+            currentIndex: _selectedIndex,
+            onTap: _onItemTapped,
+            selectedItemColor: Colors.green,
+            unselectedItemColor: Colors.grey,
+            items: [
+              _buildNavItem("assets/icons/home.svg", "Products"),
+             // _buildNavItem("assets/icons/calculator.svg", "Calculator"),
+              _buildNavItem("assets/icons/platform.svg", "Platform"),
+              _buildNavItem("assets/icons/stores.svg", "Stores"),
+              _buildNavItem("assets/icons/discover.svg", "Discover"),
+            ],
+          ),
+        ));
+  }
 
-              setState(() => selectedIndex = val);
-
-          },
-          currentIndex: selectedIndex,
-        ),
-      ),
+  BottomNavigationBarItem _buildNavItem(String iconPath, String label) {
+    return BottomNavigationBarItem(
+      icon: SvgPicture.asset(iconPath, height: 24, color: Colors.grey),
+      activeIcon: SvgPicture.asset(iconPath, height: 24, color: Colors.green),
+      label: label,
     );
   }
-
-  BottomNavigationBarItem _buildBottomNavigationBarItem(
-      String icon, String activeIcon, String label) {
-    return BottomNavigationBarItem(
-        icon: SvgPicture.asset(
-          'assets/icons/$icon.svg',
-          height: 24,
-          width: 24,
-          fit: BoxFit.cover,
-        ),
-        label: label,
-        activeIcon: SvgPicture.asset(
-          'assets/icons/$activeIcon.svg',
-          height: 26,
-          width: 26,
-          fit: BoxFit.cover,
-        ));
-  }
-  BottomNavigationBarItem _buildBottomNavigationBarItem1(
-      String icon, String activeIcon, String label) {
-    return BottomNavigationBarItem(
-        icon: SvgPicture.asset(
-          'assets/icons/$icon.svg',
-          height: 30,
-          width: 30,
-          fit: BoxFit.cover,
-        ),
-        label: label,
-        activeIcon: SvgPicture.asset(
-          'assets/icons/$activeIcon.svg',
-          height: 26,
-          width: 26,
-          fit: BoxFit.cover,
-        ));
-  }
-
 }
