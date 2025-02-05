@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "43619015566",
+    "project_id": "primax-lyalaty-program",
+    "storage_bucket": "primax-lyalaty-program.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:43619015566:android:7247d2c3442176dc15a2df",
+        "android_client_info": {
+          "package_name": "com.primax.lyalaty.program.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCQp0UYk14qTXmJVZlxydEYrTo4SWyyIZs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
