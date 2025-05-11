@@ -29,6 +29,7 @@ class CustomTextFormField extends StatelessWidget {
     this.onTap,
     this.initialValue,
     this.onSaved,
+    this.onChanged,
     this.validator,
     this.autofillHint,
   }) : super(
@@ -80,6 +81,7 @@ class CustomTextFormField extends StatelessWidget {
   final bool? isReadOnly;
   final Function? onTap;
   final Function(String)? onSaved;
+  final Function(String)? onChanged;
   final String? initialValue;
   List<String>? autofillHint;
 
@@ -97,27 +99,32 @@ class CustomTextFormField extends StatelessWidget {
 
   Widget textFormFieldWidget(BuildContext context) => SizedBox(
     width: width ?? double.maxFinite,
-    child: TextFormField(
-      autofillHints:autofillHint??[],
-      readOnly: isReadOnly ?? false,
-      scrollPadding:
-      EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-      controller: controller,
-      focusNode: focusNode ?? FocusNode(),
-      autofocus: autofocus!,
-      onTap: () => onTap == null ? () {} : onTap!(),
-      onSaved: (v) {
-        onSaved ?? (v ?? '');
-      },
-      initialValue: initialValue,
-      style: secondaryTextStyle(color: Colors.black,size: 16),
-      // style: textStyle ?? CustomTextStyles.titleMediumMedium,
-      obscureText: obscureText!,
-      textInputAction: textInputAction,
-      keyboardType: textInputType,
-      maxLines: maxLines ?? 1,
-      decoration: decoration,
-      validator: validator,
+    child: Column(
+      children: [
+        TextFormField(
+          autofillHints:autofillHint??[],
+          readOnly: isReadOnly ?? false,
+          scrollPadding:
+          EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+          controller: controller,
+          focusNode: focusNode ?? FocusNode(),
+          autofocus: autofocus!,
+          onTap: () => onTap == null ? () {} : onTap!(),
+          onSaved: (v) {
+            onSaved ?? (v ?? '');
+          },
+          onChanged: (value) => onChanged == null ? () {} : onChanged!(value),
+          initialValue: initialValue,
+          style: secondaryTextStyle(color: Colors.black,size: 16),
+          // style: textStyle ?? CustomTextStyles.titleMediumMedium,
+          obscureText: obscureText!,
+          textInputAction: textInputAction,
+          keyboardType: textInputType,
+          maxLines: maxLines ?? 1,
+          decoration: decoration,
+          validator: validator,
+        ),
+      ],
     ),
   );
 

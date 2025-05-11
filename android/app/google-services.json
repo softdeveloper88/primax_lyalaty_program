@@ -1,26 +1,51 @@
 {
   "project_info": {
-    "project_number": "43619015566",
-    "project_id": "primax-lyalaty-program",
-    "storage_bucket": "primax-lyalaty-program.firebasestorage.app"
+    "project_number": "414170553736",
+    "project_id": "primax-ebb0c",
+    "storage_bucket": "primax-ebb0c.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:43619015566:android:7247d2c3442176dc15a2df",
+        "mobilesdk_app_id": "1:414170553736:android:3f93686db3baa9f4f92e3d",
         "android_client_info": {
-          "package_name": "com.primax.lyalaty.program.app"
+          "package_name": "com.primax.solar.energy.app"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "414170553736-6j6funmtb30eenjkm4adakirj2v1b9ll.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.primax.solar.energy.app",
+            "certificate_hash": "f45b028027815e9f45e5498fa39d49fd4670402b"
+          }
+        },
+        {
+          "client_id": "414170553736-ckph38ls8v4m749g3bjrfepga86pe6gk.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
-          "current_key": "AIzaSyCQp0UYk14qTXmJVZlxydEYrTo4SWyyIZs"
+          "current_key": "AIzaSyCmfyHmxODNkO16pSnD_HenPwjfpgdm5o4"
         }
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "414170553736-ckph38ls8v4m749g3bjrfepga86pe6gk.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "414170553736-e07kd8ppd9cq3mgrkhogrtkp8eobcjd5.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.primax.solar.energy.app"
+              }
+            }
+          ]
         }
       }
     }

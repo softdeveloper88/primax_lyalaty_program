@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:nb_utils/nb_utils.dart';
+import 'package:primax_lyalaty_program/screens/dashboard_screen/dashboard_screen.dart';
 import 'package:primax_lyalaty_program/screens/login_screen/login_screen.dart';
 import 'package:primax_lyalaty_program/widgets/custom_button.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -45,14 +46,14 @@ class _OnboardScreenState extends State<OnboardScreen> {
     } else {
       _completeOnboarding().then((_) {
         // Navigate to the main app or home screen
-        LoginScreen().launch(context,isNewTask: true,pageRouteAnimation: PageRouteAnimation.Fade);
+        DashboardScreen().launch(context,isNewTask: true,pageRouteAnimation: PageRouteAnimation.Fade);
       });
     }
   }
 
   void _skipOnboarding() {
     _completeOnboarding().then((_) {
-      LoginScreen().launch(context,isNewTask: true,pageRouteAnimation: PageRouteAnimation.Fade);
+      DashboardScreen().launch(context,isNewTask: true,pageRouteAnimation: PageRouteAnimation.Fade);
 
       // Navigator.pushReplacementNamed(context, '/home');
     });

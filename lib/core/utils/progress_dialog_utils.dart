@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lottie/lottie.dart';
 
 import 'navigator_service.dart';
 
@@ -14,13 +15,8 @@ class ProgressDialogUtils {
           barrierDismissible: isCancellable,
           context: NavigatorService.navigatorKey.currentState!.overlay!.context,
           builder: (BuildContext context) {
-            return const Center(
-              child: CircularProgressIndicator.adaptive(
-                strokeWidth: 4,
-                valueColor: AlwaysStoppedAnimation<Color>(
-                  Colors.white,
-                ),
-              ),
+            return  Center(
+              child: Lottie.asset('assets/images/loader.json',height: 200,width: 200,),
             );
           });
       isProgressVisible = true;

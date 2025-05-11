@@ -1,5 +1,14 @@
+import 'dart:io';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/svg.dart';
+import 'package:flutter_downloader/flutter_downloader.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:dio/dio.dart';
+import 'package:nb_utils/nb_utils.dart';
+import 'package:open_file/open_file.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class DownloadCenterScreen extends StatefulWidget {
   const DownloadCenterScreen({super.key});
@@ -9,41 +18,165 @@ class DownloadCenterScreen extends StatefulWidget {
 }
 
 class _DownloadCenterScreenState extends State<DownloadCenterScreen> {
-  int selectedCategory = 0; // 0 for Product Datasheets, 1 for User Manuals
+  int selectedCategory = 0; // 0 for Datasheets, 1 for User Manuals
+  int selectedBrand = 0; // Index for selected brand
 
-  final List<Map<String, String>> brands = [
-    {"name": "Nexa", "image": "assets/images/pic1.png"},
-    {"name": "Galaxy", "image": "assets/images/pic2.png"},
-    {"name": "Venus", "image": "assets/images/pic3.png"},
-  ];
+   List<Map<String, String>> brands = [];
 
   final List<String> documentCategories = [
     "Product Datasheets",
     "Product User Manuals"
   ];
 
-  final List<String> images = [
-    "assets/image.png",
-    "assets/image.png",
-    "assets/image.png",
-    "assets/image.png",
-  ];
+  List<DocumentSnapshot> documents = [];
+  bool isLoading=true;
+  @override
+  void initState() {
+    super.initState();
+    getBrandsData();
+  }
+  getBrandsData()  async {
+    brands=await getBrands();
+    fetchDocuments();
+    setState(() {
+
+    });
+
+  }
+  Future<List<Map<String, String>>> getBrands() async {
+    List<Map<String, String>> brands = [];
+
+    try {
+      QuerySnapshot querySnapshot =
+      await FirebaseFirestore.instance.collection('brands').orderBy('timestamp',descending: false).get();
+
+      for (var doc in querySnapshot.docs) {
+        brands.add({
+          'id': doc.id, // Document ID
+          'name': doc['name'] ?? '', // Assuming 'name' field exists
+          'imageUrl': doc['imageUrl'] ?? '', // Assuming 'logo' field exists
+        });
+      }
+
+      print("Brands: $brands"); // Debugging
+      return brands;
+    } catch (e) {
+      print("Error fetching brands: $e");
+      return [];
+    }
+  }
+
+  Future<void> fetchDocuments() async {
+    QuerySnapshot snapshot = await FirebaseFirestore.instance
+        .collection('downloads').orderBy('watt', descending: true)
+        .where("brand", isEqualTo: brands[selectedBrand]["name"])
+        .where("category", isEqualTo: documentCategories[selectedCategory])
+        .get();
+
+    setState(() {
+      isLoading=false;
+      documents = snapshot.docs;
+    });
+  }
+
+  Future<void> downloadFile(String url, String fileName, BuildContext context) async {
+    if (Platform.isAndroid) {
+      await _androidDownload(url, fileName, context);
+    } else if (Platform.isIOS) {
+      await _iosDownload(url, fileName, context);
+    }
+  }
+  Future<void> _iosDownload(String url, String fileName, BuildContext context) async {
+    try {
+      // iOS doesn't require storage permissions for app directories
+      final directory = await getApplicationDocumentsDirectory();
+      final savePath = "${directory.path}/$fileName";
+
+      // Download using Dio
+      await Dio().download(url, savePath);
+
+      // Show success message with file location info
+      _showSnackBar(
+        context,
+        "Download complete! Access files in: Files app → Browse → On My iPhone → Primax",
+      );
+
+      // Optional: Refresh file list if using a file browser
+      // if (Platform.isIOS) await refreshFileSystem();
+
+    } catch (e) {
+      _showSnackBar(context, "Download failed: ${e.toString()}");
+      print("iOS Download Error: $e");
+    }
+  }
+  void openDownloadedFile(String filePath) async {
+    try {
+      final result = await OpenFile.open(filePath);
+      print("Open file result: ${result.message}");
+    } catch (e) {
+      print("Error opening file: $e");
+    }
+  }
+
+  Future<void> _androidDownload(String url, String fileName, BuildContext context) async {
+    try {
+      final androidInfo = await DeviceInfoPlugin().androidInfo;
+      final sdkVersion = androidInfo.version.sdkInt;
+
+      if (sdkVersion != null && sdkVersion < 29) {
+        // Legacy Android handling
+        // if (!await _requestStoragePermission()) return;
+                  final status = await Permission.storage.request();
+                  if (!status.isGranted) {
+                    _showSnackBar(context, "Storage permission denied!");
+                    return;
+                  }
+
+        final directory = await getExternalStorageDirectory();
+        final savePath = "${directory!.path}/$fileName";
+        await Dio().download(url, savePath);
+        _showSnackBar(context, "Download completed: $fileName");
+      } else {
+        // Android 10+ using DownloadManager
+        final taskId = await FlutterDownloader.enqueue(
+          url: url,
+          savedDir: (await getExternalStorageDirectory())!.path,
+          fileName: fileName,
+          showNotification: true,
+          openFileFromNotification: true,
+          saveInPublicStorage: true,
+        );
+
+        _showSnackBar(context, "Download started - check notifications");
+      }
+    } catch (e) {
+      _showSnackBar(context, "Download error: ${e.toString()}");
+      print("Download Error: $e");
+    }
+  }
+  void _showSnackBar(BuildContext context, String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        leading:  Container(
-          // margin: EdgeInsets.only(left: 10),
+        leading: Container(
           width: 40,
           height: 40,
           decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(100)
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(100),
           ),
           child: IconButton(
             icon: const Icon(Icons.arrow_back_ios_rounded, color: Colors.black),
-            onPressed: () {},
+            onPressed: () => Navigator.pop(context),
           ),
         ),
         title: const Text(
@@ -51,18 +184,14 @@ class _DownloadCenterScreenState extends State<DownloadCenterScreen> {
           style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
         ),
       ),
-
       backgroundColor: Colors.white,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Column(
+          child:isLoading ? Center(child: CircularProgressIndicator()): Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // AppBar with Back Button and Title
               const SizedBox(height: 16),
-
-              // Choose Brand Section
               const Text(
                 "Choose Brand",
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
@@ -79,29 +208,28 @@ class _DownloadCenterScreenState extends State<DownloadCenterScreen> {
                       showCheckmark: false,
                       label: Row(
                         children: [
-                          Image.asset(brands[index]["image"]!,
+                          Image.network(brands[index]["imageUrl"]!,
                               width: 40, height: 50),
                           const SizedBox(width: 8),
                           Text(brands[index]["name"]!),
                         ],
                       ),
-                      selected: selectedCategory == index,
+                      selected: selectedBrand == index,
                       onSelected: (bool selected) {
                         setState(() {
-                          selectedCategory = index;
+                          selectedBrand = index;
                         });
+                        fetchDocuments();
                       },
-                      color: WidgetStateProperty.all(
-                        Colors.grey.shade100,
-                      ),
+                      color: WidgetStateProperty.all(Colors.grey.shade100),
                       backgroundColor: Colors.white,
                       selectedColor: Colors.blue.withOpacity(0.2),
                       labelPadding: const EdgeInsets.symmetric(horizontal: 12),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10),
                         side: BorderSide(
-                          color: selectedCategory == index
-                              ? Colors.blue
+                          color: selectedBrand == index
+                              ? Colors.green
                               : Colors.grey.shade200,
                         ),
                       ),
@@ -110,8 +238,6 @@ class _DownloadCenterScreenState extends State<DownloadCenterScreen> {
                 ),
               ),
               const SizedBox(height: 20),
-
-              // Document Category Toggle
               const Text(
                 "Document Category",
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
@@ -125,6 +251,7 @@ class _DownloadCenterScreenState extends State<DownloadCenterScreen> {
                         setState(() {
                           selectedCategory = index;
                         });
+                        fetchDocuments();
                       },
                       child: Container(
                         padding: const EdgeInsets.symmetric(vertical: 10),
@@ -156,10 +283,10 @@ class _DownloadCenterScreenState extends State<DownloadCenterScreen> {
                 }),
               ),
               const SizedBox(height: 20),
-
-              // Grid of Images with Download Button
               Expanded(
-                child: GridView.builder(
+                child: documents.isEmpty
+                    ? const Center(child: Text("No Files Available"))
+                    : GridView.builder(
                   padding: const EdgeInsets.only(bottom: 20),
                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 2,
@@ -167,42 +294,71 @@ class _DownloadCenterScreenState extends State<DownloadCenterScreen> {
                     mainAxisSpacing: 12,
                     childAspectRatio: 0.8,
                   ),
-                  itemCount: images.length,
+                  itemCount: documents.length,
                   itemBuilder: (context, index) {
+                    var data = documents[index].data() as Map<String, dynamic>;
                     return Stack(
                       children: [
                         ClipRRect(
                           borderRadius: BorderRadius.circular(12),
-                          child: Image.asset(
-                            images[index],
+                          child: Image.network(
+                            data['image'],
                             width: double.infinity,
                             height: double.infinity,
                             fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) =>
+                            const Icon(Icons.broken_image, size: 80),
                           ),
                         ),
                         Positioned(
+                            bottom: 0,
+                            right: 0,
+                            left:0,
+                            child:Container(
+                                padding:  EdgeInsets.symmetric(
+                                    vertical: 10, horizontal: 6),
+                                decoration:  BoxDecoration(
+                                  color:Colors.black54,
+                                  // gradient: LinearGradient(
+                                  //   colors: [Color(0xFF47C6EB), Color(0xFF54E88C)],
+                                  //   begin: Alignment.topLeft,
+                                  //   end: Alignment.bottomRight,
+                                  // ),
+                                  borderRadius: BorderRadius.only(
+                                      topLeft: Radius.circular(10),
+                                      bottomRight: Radius.circular(10)),
+                                ),
+                                child:Padding(
+                                  padding: const EdgeInsets.only(right: 10.0),
+                                  child: Text(data['file_name'],style: TextStyle(color: Colors.white),overflow: TextOverflow.visible, ),
+                                ))
+                        ),
+
+                        Positioned(
                           bottom: 0,
                           right: 0,
-                          child: Container(
-                            // margin: const EdgeInsets.only(right: 8, bottom: 8),
-                            padding: const EdgeInsets.symmetric(
-                                vertical: 10, horizontal: 6),
-                            decoration: BoxDecoration(
-                              // color: Colors.green,
-                              gradient: LinearGradient(
-                                colors: [Color(0xFF47C6EB), Color(0xFF54E88C)],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
+                          child: GestureDetector(
+                            onTap: () =>
+                                downloadFile(data['file_url'], data['file_name'],context),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  vertical: 10, horizontal: 6),
+                              decoration: const BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [Color(0xFF47C6EB), Color(0xFF54E88C)],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                borderRadius: BorderRadius.only(
+                                    topLeft: Radius.circular(10),
+                                    bottomRight: Radius.circular(10)),
                               ),
-                              borderRadius: BorderRadius.only(
-                                  topLeft: Radius.circular(10),
-                                  bottomRight: Radius.circular(10)),
-                            ),
-                            child:  SvgPicture.asset(
-                              height: 25,
-                              width: 25,
-                              'assets/icons/ic_download.svg',
-                              color: Colors.white,
+                              child: SvgPicture.asset(
+                                height: 25,
+                                width: 25,
+                                'assets/icons/ic_download.svg',
+                                color: Colors.white,
+                              ),
                             ),
                           ),
                         ),

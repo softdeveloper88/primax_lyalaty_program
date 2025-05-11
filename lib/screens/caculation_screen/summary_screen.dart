@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../widgets/comman_back_button.dart';
+
 class SummaryScreen extends StatelessWidget {
   final Map<String, dynamic> selectedData;
 
@@ -15,10 +17,7 @@ class SummaryScreen extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.pop(context),
-        ),
+        leading: CommonBackButton(onPressed: (){Navigator.pop(context);}),
         title: const Text(
           "Summary",
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black),

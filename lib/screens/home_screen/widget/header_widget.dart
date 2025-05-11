@@ -1,8 +1,13 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_zoom_drawer/flutter_zoom_drawer.dart';
+import 'package:primax_lyalaty_program/main.dart';
+
+import '../../../widgets/images.dart';
 
 class HeaderWidget extends StatelessWidget {
   const HeaderWidget({Key? key}) : super(key: key);
-
   @override
   Widget build(BuildContext context) {
     return Row(
@@ -10,9 +15,9 @@ class HeaderWidget extends StatelessWidget {
       children: [
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          children: const [
+          children: [
             Text(
-              "Hi Handwerker!",
+              "Hi ${sharedPref.getString('user_name') ?? ''}!",
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 16,
@@ -28,9 +33,16 @@ class HeaderWidget extends StatelessWidget {
             ),
           ],
         ),
-        const CircleAvatar(
-          radius: 22,
-          // backgroundImage: AssetImage('assets/profile.jpg'), // Replace with actual image
+        InkWell(
+          onTap: () {
+            ZoomDrawer.of(context)?.toggle();
+          },
+          child: CircleAvatar(
+            radius: 25,
+            backgroundImage: sharedPref.containsKey('user_id')
+                ? FileImage(File(sharedPref.getString('profile') ?? ""))
+                : AssetImage(Images.ellipse),
+          ),
         ),
       ],
     );

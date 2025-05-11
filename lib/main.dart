@@ -1,13 +1,40 @@
+import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_remote_config/firebase_remote_config.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_downloader/flutter_downloader.dart';
+import 'package:flutter_stripe/flutter_stripe.dart';
+import 'package:nb_utils/nb_utils.dart';
 import 'package:primax_lyalaty_program/screens/splash_screen/splash_screen.dart';
 
+import 'core/utils/constants.dart';
+import 'core/utils/navigator_service.dart';
 import 'firebase_options.dart';
 import 'screens/onboard_screen/onboard_screen.dart';
-
+late SharedPreferences sharedPref;
+class DownloadCallbackHandler {
+  static void callback(String id, DownloadTaskStatus status, int progress) {
+    // Handle download progress/status updates here
+    print("Download task ($id): $status, $progress%");
+  }
+}
+Future<void> _initializeFlutterDownloader() async {
+  try {
+    await FlutterDownloader.initialize(
+        debug: true // Set to false for production
+    );
+    await FlutterDownloader.registerCallback(DownloadCallbackHandler.callback as DownloadCallback);
+  } catch (e) {
+    print("Downloader initialization error: $e");
+  }
+}
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Stripe.publishableKey = 'pk_test_51QwIYgGV6yY5eYxCWmBRW92CEt2dHLPqyCsTPkk59sB46aTTcf7u8SLFR6JyQaYf0IHZfWdNBFpfXSSErkDB1pEH00ThA5WaMc';
+  sharedPref=await SharedPreferences.getInstance();
+   _initializeFlutterDownloader();
   // SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
   //   systemNavigationBarColor: Colors.white, // navigation bar color
   //   statusBarColor: Colors.white, // status bar color
@@ -15,6 +42,46 @@ Future<void> main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  FirebaseAnalytics analytics = FirebaseAnalytics.instance;
+  final FirebaseRemoteConfig remoteConfig = FirebaseRemoteConfig.instance;
+
+  await remoteConfig.setConfigSettings(RemoteConfigSettings(
+    fetchTimeout: const Duration(minutes: 1),
+    minimumFetchInterval: const Duration(minutes: 0),
+  ));
+
+  try {
+    print("📡 Fetching Remote Config...");
+    bool updated = await remoteConfig.fetchAndActivate();
+    print("✅ Remote Config Updated: $updated");
+
+    // 🔍 Print all available keys and values
+    Map<String, RemoteConfigValue> allValues = remoteConfig.getAll();
+    print("🔍 All Remote Config Data:");
+    allValues.forEach((key, value) {
+      print("➡️ $key: '${value.asString()}'"); // Check if values exist
+    });
+
+    // Print specific keys
+    String stripePublishKey = remoteConfig.getString("stripe_publish_key");
+     stripeSecretKey = remoteConfig.getString("stripe_sec_key");
+
+    Stripe.publishableKey = stripePublishKey;
+
+    await Stripe.instance.applySettings();
+    if (stripePublishKey.isEmpty) {
+      print("⚠️ ERROR: 'stripe_publish_key' is EMPTY.");
+    }
+    if (stripeSecretKey.isEmpty) {
+      print("⚠️ ERROR: 'stripe_sec_key' is EMPTY.");
+    }
+
+  } catch (e) {
+    print("⚠️ ERROR: Remote Config fetch failed: $e");
+  }
+  // Initialize Stripe with Publishable Key
+
+
   runApp(const MyApp());
 }
 
@@ -25,6 +92,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: NavigatorService.navigatorKey,
       debugShowCheckedModeBanner: false,
       title: '',
       theme: ThemeData(

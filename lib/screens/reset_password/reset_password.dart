@@ -151,7 +151,7 @@ class _ResetPasswordState extends State<ResetPassword> {
             const SizedBox(height: 30),
             InkWell(
               onTap: (){
-                LoginScreen().launch(context,pageRouteAnimation: PageRouteAnimation.Slide,);
+                LoginScreen(fromSplash: true,).launch(context,pageRouteAnimation: PageRouteAnimation.Slide,);
               },
               child: Center(
                 child: Text.rich(

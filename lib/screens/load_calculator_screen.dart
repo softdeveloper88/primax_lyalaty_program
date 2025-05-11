@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:primax_lyalaty_program/widgets/comman_back_button.dart';
 import 'caculation_screen/summary_screen.dart';
 
 class LoadCalculatorScreen extends StatefulWidget {
@@ -81,10 +82,7 @@ class _LoadCalculatorScreenState extends State<LoadCalculatorScreen> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () {},
-        ),
+        leading: CommonBackButton(onPressed: (){Navigator.pop(context);}),
         title: const Text("Load Calculator",
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black)),
         actions: [

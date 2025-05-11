@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -21,15 +22,46 @@ class _ForgotPasswordState extends State<ForgotPassword> {
   bool isEmailSelected = true;
   bool isPasswordVisible = false;
   bool isKeepSignedIn = false;
+  final TextEditingController emailController = TextEditingController();
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+  bool isLoading = false;
 
+  Future<void> resetPassword() async {
+    if (!_formKey.currentState!.validate()) return; // Stop if validation fails
+
+    setState(() => isLoading = true);
+
+    try {
+      await FirebaseAuth.instance.sendPasswordResetEmail(
+        email: emailController.text.trim(),
+      );
+
+      toast('Password reset email sent! Check your inbox.');
+      finish(context); // Close Forgot Password screen
+    } on FirebaseAuthException catch (e) {
+      toast(e.message ?? 'Failed to send reset email');
+    } finally {
+      setState(() => isLoading = false);
+    }
+  }
+
+  String? validateEmail(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'Please enter your email';
+    } else if (!value.validateEmail()) {
+      return 'Enter a valid email';
+    }
+    return null;
+  }
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
-        child: Form(
-          child: Column(
+        child:Form(
+          key: _formKey,
+          child:  Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 50),
@@ -54,6 +86,8 @@ class _ForgotPasswordState extends State<ForgotPassword> {
               CustomTextFormField(
                 // decoration: InputDecoration(
                 hintText: 'Email Address' ,
+                controller: emailController,
+                validator: validateEmail,
                 // border: OutlineInputBorder(
                 //   borderRadius: BorderRadius.circular(8),
                 // ),
@@ -61,11 +95,9 @@ class _ForgotPasswordState extends State<ForgotPassword> {
               ),
               const SizedBox(height: 50),
               CustomButton(
-                onPressed: () {
-                  // Handle login
-                },
+                onPressed: resetPassword,
                 width: double.maxFinite,
-                text:'Reset Password',
+                text: isLoading ? 'Sending...' : 'Reset Password',
               ),
               const SizedBox(height: 50),
               Center(

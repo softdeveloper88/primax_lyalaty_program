@@ -2,18 +2,24 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>CLIENT_ID</key>
+	<string>414170553736-e07kd8ppd9cq3mgrkhogrtkp8eobcjd5.apps.googleusercontent.com</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.414170553736-e07kd8ppd9cq3mgrkhogrtkp8eobcjd5</string>
+	<key>ANDROID_CLIENT_ID</key>
+	<string>414170553736-6j6funmtb30eenjkm4adakirj2v1b9ll.apps.googleusercontent.com</string>
 	<key>API_KEY</key>
-	<string>AIzaSyDX4FFKTVJf8mNxICTU1zlDhOjLKm5Ari0</string>
+	<string>AIzaSyDXCUC2HiimXAZ1kV25rT7wlmURbJUtE-o</string>
 	<key>GCM_SENDER_ID</key>
-	<string>43619015566</string>
+	<string>414170553736</string>
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>com.primax.lyalaty.program.app</string>
+	<string>com.primax.solar.energy.app</string>
 	<key>PROJECT_ID</key>
-	<string>primax-lyalaty-program</string>
+	<string>primax-ebb0c</string>
 	<key>STORAGE_BUCKET</key>
-	<string>primax-lyalaty-program.firebasestorage.app</string>
+	<string>primax-ebb0c.firebasestorage.app</string>
 	<key>IS_ADS_ENABLED</key>
 	<false></false>
 	<key>IS_ANALYTICS_ENABLED</key>
@@ -25,6 +31,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:43619015566:ios:6895e30af436bb1d15a2df</string>
+	<string>1:414170553736:ios:2523c003772b9a06f92e3d</string>
 </dict>
 </plist>

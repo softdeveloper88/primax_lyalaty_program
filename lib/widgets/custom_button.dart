@@ -4,7 +4,7 @@ class CustomButton extends StatelessWidget {
   final String text;
   final VoidCallback onPressed;
   final bool isLoading;
-  final double width;
+  final double? width;
   final double height;
   final double borderRadius;
   final Color? startColor;
@@ -15,7 +15,7 @@ class CustomButton extends StatelessWidget {
     required this.text,
     required this.onPressed,
     this.isLoading = false,
-    this.width = 200,
+    this.width,
     this.height = 50,
     this.borderRadius = 25,
     this.startColor,
@@ -27,6 +27,9 @@ class CustomButton extends StatelessWidget {
     return MaterialButton(
       onPressed: isLoading ? null : onPressed,
       child: Container(
+        constraints: BoxConstraints(
+          minWidth: 100
+        ),
         width: width,
         height: height,
         decoration: BoxDecoration(

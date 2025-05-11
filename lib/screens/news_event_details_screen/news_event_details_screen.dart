@@ -1,23 +1,90 @@
 import 'package:carousel_slider/carousel_slider.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
+import 'package:nb_utils/nb_utils.dart';
+import 'package:primax_lyalaty_program/core/utils/comman_data.dart';
+import 'package:primax_lyalaty_program/main.dart';
+import 'package:primax_lyalaty_program/screens/login_screen/login_screen.dart';
 import 'package:primax_lyalaty_program/widgets/custom_button.dart';
 
 class NewsEventDetailsScreen extends StatefulWidget {
+  NewsEventDetailsScreen(this.data,this.isEvent, {super.key});
+  DocumentSnapshot<Object?> data;
+  bool isEvent;
   @override
   _NewsEventDetailsScreenState createState() => _NewsEventDetailsScreenState();
 }
 
 class _NewsEventDetailsScreenState extends State<NewsEventDetailsScreen> {
   int _currentIndex = 0;
-  final List<String> imageUrls = [
-    "assets/images/img.png",
-    "assets/images/img.png",
-    "assets/images/img.png",
-  ];
+
+  Future<bool> isRegister(String eventId) async {
+    DocumentSnapshot eventSnapshot = await FirebaseFirestore.instance.collection('events').doc(eventId).get();
+
+    List<String> registerUser = List<String>.from(eventSnapshot['register_users'] ?? []);
+    return registerUser.contains(sharedPref.getString('user_id'));
+  }
+  bool isRegisterUser=false;
+  void checkRegistration() async {
+    isRegisterUser = await isRegister(widget.data.id??'');
+    setState(() {});
+  }
+  @override
+  void initState() {
+    if(widget.isEvent) {
+      checkRegistration();
+    }
+    super.initState();
+  }
+  Future<void> toggleRegister(String eventId) async {
+
+    // Optimistically update UI
+    setState(() {
+      isRegisterUser = !isRegisterUser;
+    });
+
+    DocumentReference eventPref = FirebaseFirestore.instance.collection('events').doc(eventId);
+
+    try {
+      DocumentSnapshot productSnapshot = await eventPref.get();
+      List<String> registerUser = List<String>.from(productSnapshot['register_users'] ?? []);
+
+      if (registerUser.contains(sharedPref.getString('user_id'))) {
+        // Remove from favorites in Firestore
+        await eventPref.update({
+          'register_users': FieldValue.arrayRemove([sharedPref.getString('user_id')]),
+        });
+
+      } else {
+        // Add to favorites in Firestore
+        await eventPref.update({
+          'register_users': FieldValue.arrayUnion([sharedPref.getString('user_id')]),
+        });
+        sendNotificationToAllUsers(userId: sharedPref.getString('user_id'),title: 'You have successfully registered in event',type: 'event_register',id:'' ,newPrice:0.0,oldPrice: 0.0,);
+
+      }
+    } catch (e) {
+      // If Firestore update fails, revert the UI change
+      setState(() {
+        isRegisterUser = !isRegisterUser;
+      });
+      print("Error updating Register status: $e");
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    List<String> imageUrls = List<String>.from(widget.data['images'] ?? []);
+    String title = widget.data['title'] ?? "No Title";
+    String description = widget.data['description'] ?? "No Description";
+    String category = widget.data['category'] ?? "General";
+    String author = widget.data['author'] ?? "Primax";
+    String authorImage = widget.data['author_image'] ?? "Primax";
+    String location = widget.data['location'] ?? "No Location";
+    String time = widget.data['time'] ?? "No Time";
+
     return Scaffold(
       backgroundColor: Colors.grey[100],
       body: SafeArea(
@@ -32,7 +99,7 @@ class _NewsEventDetailsScreenState extends State<NewsEventDetailsScreen> {
                 children: [
                   CarouselSlider(
                     items: imageUrls.map((imageUrl) {
-                      return Image.asset(
+                      return Image.network(
                         imageUrl,
                         height: 300,
                         width: double.infinity,
@@ -87,7 +154,9 @@ class _NewsEventDetailsScreenState extends State<NewsEventDetailsScreen> {
                 child: IconButton(
                   icon: const Icon(Icons.arrow_back_ios_rounded,
                       color: Colors.black),
-                  onPressed: () {},
+                  onPressed: () {
+                    Navigator.pop(context);
+                  },
                 ),
               ),
             ),
@@ -123,7 +192,7 @@ class _NewsEventDetailsScreenState extends State<NewsEventDetailsScreen> {
                         // Your existing content
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 4),
+                              horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
                             color: Colors.grey[200],
                             borderRadius: BorderRadius.circular(20),
@@ -133,9 +202,11 @@ class _NewsEventDetailsScreenState extends State<NewsEventDetailsScreen> {
                             mainAxisAlignment: MainAxisAlignment.start,
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              SvgPicture.asset('assets/icons/location.svg'),
-                              const Text(
-                                "Lahore Service Center 1",
+                              Visibility(
+                                  visible: !widget.isEvent,
+                                  child: SvgPicture.asset('assets/icons/location.svg')),
+                               Text(
+                                 !widget.isEvent?location:category,
                                 style: TextStyle(
                                     fontSize: 14, color: Colors.green),
                               ),
@@ -145,8 +216,8 @@ class _NewsEventDetailsScreenState extends State<NewsEventDetailsScreen> {
                         const SizedBox(height: 8),
 
                         // Event Title
-                        const Text(
-                          "Primax Solar Solar Inverter Launch",
+                         Text(
+                          title,
                           style: TextStyle(
                               fontSize: 22, fontWeight: FontWeight.bold),
                         ),
@@ -157,41 +228,40 @@ class _NewsEventDetailsScreenState extends State<NewsEventDetailsScreen> {
                           children: [
                             CircleAvatar(
                               radius: 12,
-                              backgroundColor: Colors.red,
-                              child: Text(
-                                "N", // First letter of Life Art
-                                style: TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold),
-                              ),
+                              backgroundImage: (authorImage.contains('http://')|| authorImage.contains('https://'))?NetworkImage(
+                                authorImage, // First letter of Life Art
+                               ):AssetImage('assets/images/app_logo.png'),
                             ),
                             const SizedBox(width: 5),
-                            const Text(
-                              "Life Art",
+                             Text(
+                               'By ${author.replaceAll("By ", '')}',
                               style: TextStyle(
                                   fontSize: 16, fontWeight: FontWeight.w500),
                             ),
                             const Spacer(),
-                            Container(
-                              height: 35,
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(color: Colors.green,width: 0.5),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.green.withOpacity(0.3),
-                                    blurRadius: 6,
-                                  ),
-                                ],
-                              ),
-                              child: Row(
-                                children:  [
-                                  SvgPicture.asset('assets/icons/clock.svg', color: Colors.green),
-                                  SizedBox(width: 4),
-                                  Text("11:00 - 12:00 AM",style:TextStyle(color: Colors.black)),
-                                ],
+                            Visibility(
+                              visible: widget.isEvent,
+                              child: Container(
+                                height: 35,
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(color: Colors.green,width: 0.5),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.green.withOpacity(0.3),
+                                      blurRadius: 6,
+                                    ),
+                                  ],
+                                ),
+                                child: Row(
+                                  children:  [
+                                    SvgPicture.asset('assets/icons/clock.svg', color: Colors.green),
+                                    SizedBox(width: 4),
+                                    Text(time,style:TextStyle(color: Colors.black)),
+                                  ],
+                                ),
                               ),
                             ),
                           ],
@@ -199,58 +269,36 @@ class _NewsEventDetailsScreenState extends State<NewsEventDetailsScreen> {
                         const SizedBox(height: 16),
 
                         // About Event
-                        const Text(
-                          "About Event",
+                         Text(
+                       widget.isEvent?  "About Event":"News",
                           style: TextStyle(
                               fontSize: 18, fontWeight: FontWeight.bold),
                         ),
                         const SizedBox(height: 8),
-                        const Text(
-                          "Primax Solar Energy proudly hosted an extraordinary event to unveil "
-                          "the latest addition to its innovative product lineup: the NEXA Hybrid Solar Inverter. "
-                          "Designed to redefine reliability and efficiency, the NEXA series boasts a robust design, "
-                          "ensuring unmatched protection against dust, water, and challenging environmental conditions.",
-                          style: TextStyle(fontSize: 16, color: Colors.black54),
+                         HtmlWidget(
+                           description,
+                          textStyle: TextStyle(fontSize: 16, color: Colors.black54),
                         ),
                         const SizedBox(height: 16),
 
                         // Bullet Points Section
-                        const Text(
-                          "The launch event brought together industry leaders,",
-                          style: TextStyle(
-                              fontSize: 18, fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(height: 10),
-
-                        BulletPoint(
-                            "Product Presentation: A detailed demonstration of the NEXA Hybrid Inverter’s features, including its hybrid capability for seamless integration with both solar and grid power systems, exceptional energy conversion rates, and enhanced durability."),
-                        BulletPoint(
-                            "Live Performance Showcase: A hands-on showcase where attendees experienced the inverter’s superior performance in real-time scenarios, emphasizing its ability to withstand extreme conditions while delivering optimal energy output."),
-                        BulletPoint(
-                            "Expert Talks: Industry experts shared insights into the evolving energy landscape, highlighting how NEXA’s advanced technology can contribute to sustainable living and energy independence."),
-                        BulletPoint(
-                            "Networking Opportunities: The event facilitated valuable interactions among industry professionals, partners, and renewable energy enthusiasts, fostering collaborations and partnerships for a greener future."),
-                        const SizedBox(height: 16),
-
-                        // Final Summary
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.grey[100],
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Text(
-                            "The NEXA Hybrid Solar Inverter launch reaffirmed Primax Solar Energy’s commitment to driving innovation in renewable energy solutions. Attendees left inspired by the possibilities of integrating robust and efficient solar energy systems into everyday life.",
-                            style: TextStyle(
-                                fontSize: 16,
-                                fontStyle: FontStyle.italic,
-                                color: Colors.black54),
-                          ),
-                        ),
                         const SizedBox(height: 24),
-                        CustomButton(text: 'Registration', onPressed: (){},
-                        width:400,
-                        )
+                       Visibility(
+                         visible: widget.isEvent,
+                         child: CustomButton(text:isRegisterUser?"Registered":"Registration",
+                              onPressed: (){
+                                if(sharedPref.getString('user_id') !=null) {
+                                  toggleRegister(widget.data.id);
+
+                                } else {
+                                  LoginScreen().launch(context, pageRouteAnimation: PageRouteAnimation
+                                      .Slide);
+                                }
+
+                              },
+                          width:400,
+                          ),
+                       )
                       ],
                     ),
                   ),
@@ -259,31 +307,6 @@ class _NewsEventDetailsScreenState extends State<NewsEventDetailsScreen> {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-// Bullet Point Widget
-class BulletPoint extends StatelessWidget {
-  final String text;
-
-  const BulletPoint(this.text, {super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8.0),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text("• ",
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-          Expanded(
-            child: Text(text,
-                style: const TextStyle(fontSize: 16, color: Colors.black54)),
-          ),
-        ],
       ),
     );
   }

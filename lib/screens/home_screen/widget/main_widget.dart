@@ -31,11 +31,10 @@ class MainWidget extends StatelessWidget {
               children: [
                 // Header Section
                 const SizedBox(height: 60),
-
                 const HeaderWidget(),
                 const SizedBox(height: 20),
                 // Search Bar
-                const SearchBarWidget(),
+                 SearchBarWidget((d){}),
                 const SizedBox(height: 20),
                 // Brand Selector
                 Expanded(child: mWidget??SizedBox.shrink()),

@@ -49,17 +49,14 @@ class PlatformScreen extends StatelessWidget {
                    },
                     icon: 'assets/icons/scan.svg',
                     title: "Download Center",
-                    subtitle: "Manage and Track Your\nDocuments & Reports",
+                    subtitle: "Manage and Track Your Documents & Reports",
                     color: Colors.green.shade50,
                     iconColor: Colors.green,
                   ),
               ],
             ),
           ),
-
-          const Expanded(
-            child: SizedBox(), // For spacing to match UI
-          ),
+          Spacer(),
           _buildGradientBackground(), // Gradient effect at the bottom
         ],
       ),
@@ -78,7 +75,9 @@ class PlatformScreen extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         child: Container(
-          height: 160,
+          // height: 160,
+          constraints: BoxConstraints(minHeight: 160
+          ),
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             color: color,
@@ -97,7 +96,7 @@ class PlatformScreen extends StatelessWidget {
               const SizedBox(height: 8),
               Text(title,
                   style: const TextStyle(
-                      fontSize: 16, fontWeight: FontWeight.bold)),
+                      fontSize: 14, fontWeight: FontWeight.bold)),
               const SizedBox(height: 4),
               Text(subtitle,
                   style: TextStyle(fontSize: 12, color: Colors.grey[700])),
