@@ -1,0 +1,20 @@
+{
+  "buildFiles": [
+    "/Users/skapple/Documents/development/flutter/packages/flutter_tools/gradle/src/main/groovy/CMakeLists.txt"
+  ],
+  "cleanCommandsComponents": [
+    [
+      "/Users/skapple/Library/Android/sdk/cmake/3.22.1/bin/ninja",
+      "-C",
+      "/Users/skapple/Documents/MyProjects/primax_lyalaty_program/android/app/.cxx/Debug/414h4q3b/armeabi-v7a",
+      "clean"
+    ]
+  ],
+  "buildTargetsCommandComponents": [
+    "/Users/skapple/Library/Android/sdk/cmake/3.22.1/bin/ninja",
+    "-C",
+    "/Users/skapple/Documents/MyProjects/primax_lyalaty_program/android/app/.cxx/Debug/414h4q3b/armeabi-v7a",
+    "{LIST_OF_TARGETS_TO_BUILD}"
+  ],
+  "libraries": {}
+}
