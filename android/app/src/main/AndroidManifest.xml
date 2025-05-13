@@ -3,7 +3,6 @@
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
-    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" tools:node="remove"/>
 
     <!-- required from API level 33 -->
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" /> <!-- To read images created by other apps -->

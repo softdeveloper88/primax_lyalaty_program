@@ -13,10 +13,10 @@ import 'package:primax_lyalaty_program/screens/home_screen/about_us_screen.dart'
 import 'package:primax_lyalaty_program/screens/login_screen/login_screen.dart';
 import 'package:primax_lyalaty_program/screens/my_cart_screen.dart';
 import 'package:primax_lyalaty_program/screens/notification_screen.dart';
-import 'package:primax_lyalaty_program/screens/personal%20Info.dart';
 import 'package:primax_lyalaty_program/widgets/images.dart';
 
 import '../../orders_screen/orders_screen.dart';
+import '../../personal_info.dart';
 import '../contact_us_screen.dart';
 
 class DrawerWidget extends StatelessWidget {

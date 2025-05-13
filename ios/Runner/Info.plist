@@ -51,5 +51,30 @@
     <true/>
     <key>NSDocumentsFolderUsageDescription</key>
     <string>$(PRODUCT_NAME) needs access to save your downloaded files</string>
+    
+    <!-- Location permissions -->
+    <key>NSLocationWhenInUseUsageDescription</key>
+    <string>This app needs access to your location to show nearby stores and calculate distance.</string>
+    
+    <!-- Camera and Photo Library permissions -->
+    <key>NSCameraUsageDescription</key>
+    <string>This app needs camera access to take profile pictures and upload documents.</string>
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>This app needs access to your photo library to select profile pictures and upload documents.</string>
+    <key>NSPhotoLibraryAddUsageDescription</key>
+    <string>This app needs permission to save photos to your library.</string>
+    
+    <!-- File access permissions -->
+    <key>NSAppTransportSecurity</key>
+    <dict>
+        <key>NSAllowsArbitraryLoads</key>
+        <true/>
+    </dict>
+    
+    <!-- Google Maps API Key -->
+    <key>io.flutter.embedded_views_preview</key>
+    <true/>
+    <key>GMSApiKey</key>
+    <string>AIzaSyCmfyHmxODNkO16pSnD_HenPwjfpgdm5o4</string>
 </dict>
 </plist>
