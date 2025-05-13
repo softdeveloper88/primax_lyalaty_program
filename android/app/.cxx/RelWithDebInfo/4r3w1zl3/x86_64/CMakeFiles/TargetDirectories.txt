@@ -1,0 +1,2 @@
+/Users/skapple/Documents/MyProjects/primax_lyalaty_program/android/app/.cxx/RelWithDebInfo/4r3w1zl3/x86_64/CMakeFiles/edit_cache.dir
+/Users/skapple/Documents/MyProjects/primax_lyalaty_program/android/app/.cxx/RelWithDebInfo/4r3w1zl3/x86_64/CMakeFiles/rebuild_cache.dir
