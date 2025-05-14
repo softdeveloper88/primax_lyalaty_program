@@ -243,7 +243,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               ),
             ),
           ),
-
           // Search bar with animation
           Positioned(
             top: headerExpandedHeight - searchBarHeight / 2 - (_animation.value * (headerExpandedHeight - headerCollapsedHeight - 10)),
