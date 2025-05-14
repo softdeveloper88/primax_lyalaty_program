@@ -600,7 +600,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       child: Padding(
         padding: EdgeInsets.all(16),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('Shipping Information',
+          Text('Payment Method',
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
           SizedBox(height: 10),
           if (cardData.isNotEmpty)

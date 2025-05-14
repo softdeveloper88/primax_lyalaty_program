@@ -39,9 +39,9 @@ class HeaderWidget extends StatelessWidget {
           },
           child: CircleAvatar(
             radius: 25,
-            backgroundImage: sharedPref.containsKey('user_id')
-                ? FileImage(File(sharedPref.getString('profile') ?? ""))
-                : AssetImage(Images.ellipse),
+            backgroundImage: sharedPref.containsKey('user_id') && sharedPref.getString('profile') != null && sharedPref.getString('profile')!.isNotEmpty
+                ? FileImage(File(sharedPref.getString('profile')!))
+                : AssetImage(Images.ellipse) as ImageProvider,
           ),
         ),
       ],

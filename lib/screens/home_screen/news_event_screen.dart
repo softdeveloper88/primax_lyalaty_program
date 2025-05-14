@@ -41,9 +41,11 @@ class _NewsEventScreenState extends State<NewsEventScreen> with SingleTickerProv
   void updateSearch(String search) {
     if (_debounce?.isActive ?? false) _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 500), () {
-      setState(() {
-        query = search.toLowerCase();
-      });
+      if (mounted) {
+        setState(() {
+          query = search.toLowerCase();
+        });
+      }
     });
   }
 
@@ -83,30 +85,23 @@ class _NewsEventScreenState extends State<NewsEventScreen> with SingleTickerProv
   void _handleScroll() {
     // Avoid multiple updates during scroll
     if (_isUpdating) return;
-
-    if (_scrollController.offset > 10 && !isCollapsed) {
+    
+    // Use a threshold value to prevent frequent toggling
+    final double threshold = 15.0;
+    
+    if (_scrollController.offset > threshold && !isCollapsed) {
       _isUpdating = true;
-      // Schedule the state update for after the current frame
-      SchedulerBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          setState(() {
-            isCollapsed = true;
-          });
-          _animationController.forward();
-          _isUpdating = false;
-        }
+      // Don't use setState inside scroll event - it causes jank
+      // Instead, only animate and update the collapsed state
+      isCollapsed = true;
+      _animationController.forward().then((_) {
+        _isUpdating = false;
       });
-    } else if (_scrollController.offset <= 10 && isCollapsed) {
+    } else if (_scrollController.offset <= threshold/2 && isCollapsed) {
       _isUpdating = true;
-      // Schedule the state update for after the current frame
-      SchedulerBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          setState(() {
-            isCollapsed = false;
-          });
-          _animationController.reverse();
-          _isUpdating = false;
-        }
+      isCollapsed = false;
+      _animationController.reverse().then((_) {
+        _isUpdating = false;
       });
     }
   }
@@ -190,7 +185,7 @@ class _NewsEventScreenState extends State<NewsEventScreen> with SingleTickerProv
             bottom: 0,
             child: CustomScrollView(
               controller: _scrollController,
-              physics: BouncingScrollPhysics(),
+              physics: const ClampingScrollPhysics(), // Better for preventing over-scroll refreshes
               slivers: [
                 // Tabs section
                 SliverPadding(
@@ -219,8 +214,11 @@ class _NewsEventScreenState extends State<NewsEventScreen> with SingleTickerProv
                 SliverPadding(
                   padding: const EdgeInsets.fromLTRB(16, 10, 16, 20),
                   sliver: SliverToBoxAdapter(
-                    child: SizedBox(
-                      height: MediaQuery.of(context).size.height - contentTopPadding - 100,
+                    child: NotificationListener<ScrollNotification>(
+                      onNotification: (notification) {
+                        // Block scroll updates during animation
+                        return _isUpdating;
+                      },
                       child: _buildNewsEventsList(),
                     ),
                   ),
@@ -289,10 +287,10 @@ class _NewsEventScreenState extends State<NewsEventScreen> with SingleTickerProv
   }
 
   Widget _buildNewsEventsList() {
-    return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
+    return FutureBuilder<QuerySnapshot>(
+      future: FirebaseFirestore.instance
           .collection(selectedIndex == 0 ? 'news' : 'events')
-          .snapshots(),
+          .get(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return Center(child: CircularProgressIndicator());
@@ -315,6 +313,10 @@ class _NewsEventScreenState extends State<NewsEventScreen> with SingleTickerProv
             String title = doc['title'].toString().toLowerCase();
             return title.contains(query);
           }).toList();
+        }
+
+        if (data.isEmpty) {
+          return Center(child: Text("No matching items found"));
         }
 
         return ListView.builder(
@@ -498,6 +500,8 @@ class _NewsCardState extends State<NewsCard> {
                   Text(
                     title,
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 4),
                   HtmlWidget(
@@ -520,18 +524,32 @@ class _NewsCardState extends State<NewsCard> {
                         Expanded(
                           child: Row(
                             children:  [
-                              SvgPicture.asset('assets/icons/location.svg', color: Colors.green),
+                              SvgPicture.asset('assets/icons/location.svg', color: Colors.green, width: 16, height: 16),
                               SizedBox(width: 4),
-                              Expanded(child: Text(location,overflow: TextOverflow.ellipsis,)),
+                              Expanded(
+                                child: Text(
+                                  location,
+                                  overflow: TextOverflow.ellipsis,
+                                  maxLines: 1,
+                                  style: TextStyle(fontSize: 12),
+                                ),
+                              ),
                             ],
                           ),
                         ),
                         Expanded(
                           child: Row(
                             children:  [
-                              SvgPicture.asset('assets/icons/clock.svg', color: Colors.green),
+                              SvgPicture.asset('assets/icons/clock.svg', color: Colors.green, width: 16, height: 16),
                               SizedBox(width: 4),
-                              Expanded(child: Text(time)),
+                              Expanded(
+                                child: Text(
+                                  time,
+                                  overflow: TextOverflow.ellipsis,
+                                  maxLines: 1,
+                                  style: TextStyle(fontSize: 12),
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -666,15 +684,17 @@ class _NewsEventsTabsState extends State<NewsEventsTabs> {
     return Expanded(
       child: GestureDetector(
         onTap: () {
-          setState(() {
-            selectedIndex = index;
-            selectedCategory = ""; // Reset category when switching tabs
-          });
+          if (selectedIndex != index) {
+            setState(() {
+              selectedIndex = index;
+              selectedCategory = ""; // Reset category when switching tabs
+            });
 
-          widget.callback?.call(index); // Ensure tab change is notified
+            widget.callback?.call(index); // Ensure tab change is notified
 
-          if (index == 1) {
-            widget.onCategorySelected?.call(""); // Trigger data reload for Events
+            if (index == 1) {
+              widget.onCategorySelected?.call(""); // Trigger data reload for Events
+            }
           }
         },
         child: Container(
@@ -717,10 +737,14 @@ class _NewsEventsTabsState extends State<NewsEventsTabs> {
       selected: selectedCategory == category,
       showCheckmark: false,
       onSelected: (selected) {
-        setState(() {
-          selectedCategory = selected ? category : "";
-        });
-        widget.onCategorySelected?.call(selectedCategory);
+        // Only update if the selection actually changes
+        final String newCategory = selected ? category : "";
+        if (selectedCategory != newCategory) {
+          setState(() {
+            selectedCategory = newCategory;
+          });
+          widget.onCategorySelected?.call(selectedCategory);
+        }
       },
       selectedColor: Colors.blue.withOpacity(0.3),
       backgroundColor: Colors.white,

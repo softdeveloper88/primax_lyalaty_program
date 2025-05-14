@@ -78,30 +78,23 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   void _handleScroll() {
     // Avoid multiple updates during scroll
     if (_isUpdating) return;
-
-    if (_scrollController.offset > 10 && !isCollapsed) {
+    
+    // Use a threshold value to prevent frequent toggling
+    final double threshold = 15.0;
+    
+    if (_scrollController.offset > threshold && !isCollapsed) {
       _isUpdating = true;
-      // Schedule the state update for after the current frame
-      SchedulerBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          setState(() {
-            isCollapsed = true;
-          });
-          _animationController.forward();
-          _isUpdating = false;
-        }
+      // Don't use setState inside scroll event - it causes jank
+      // Instead, only animate and update the collapsed state
+      isCollapsed = true;
+      _animationController.forward().then((_) {
+        _isUpdating = false;
       });
-    } else if (_scrollController.offset <= 10 && isCollapsed) {
+    } else if (_scrollController.offset <= threshold/2 && isCollapsed) {
       _isUpdating = true;
-      // Schedule the state update for after the current frame
-      SchedulerBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          setState(() {
-            isCollapsed = false;
-          });
-          _animationController.reverse();
-          _isUpdating = false;
-        }
+      isCollapsed = false;
+      _animationController.reverse().then((_) {
+        _isUpdating = false;
       });
     }
   }
@@ -161,11 +154,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             bottom: 0,
             child: CustomScrollView(
               controller: _scrollController,
-              physics: BouncingScrollPhysics(),
+              physics: const ClampingScrollPhysics(), // Changed to clamping physics for smoother scrolling
               slivers: [
                 // Brand selector
                 SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                   sliver: SliverToBoxAdapter(
                     child: BrandSelector(
                       brands: brands,
@@ -202,11 +195,17 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                 SliverPadding(
                   padding: const EdgeInsets.fromLTRB(16, 10, 16, 20),
                   sliver: SliverToBoxAdapter(
-                    child: UnifiedProductGrid(
-                      query: query,
-                      selectedBrand: selectedBrandIndex != -1
-                          ? '${brands[selectedBrandIndex]['name']}'
-                          : null,
+                    child: NotificationListener<ScrollNotification>(
+                      onNotification: (notification) {
+                        // Block scroll notifications during animation
+                        return _isUpdating;
+                      },
+                      child: UnifiedProductGrid(
+                        query: query,
+                        selectedBrand: selectedBrandIndex != -1
+                            ? '${brands[selectedBrandIndex]['name']}'
+                            : null,
+                      ),
                     ),
                   ),
                 ),
@@ -259,77 +258,123 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 }
 
 // Modified version of PopularSeries that expands to fill available space
-class UnifiedProductGrid extends StatelessWidget {
+class UnifiedProductGrid extends StatefulWidget {
   final String query;
   final String? selectedBrand;
 
   const UnifiedProductGrid({required this.query, required this.selectedBrand, Key? key}) : super(key: key);
 
   @override
+  State<UnifiedProductGrid> createState() => _UnifiedProductGridState();
+}
+
+class _UnifiedProductGridState extends State<UnifiedProductGrid> with AutomaticKeepAliveClientMixin {
+  List<QueryDocumentSnapshot<Object?>> products = [];
+  bool isLoading = true;
+  
+  @override
+  void initState() {
+    super.initState();
+    // Load products once on init
+    _loadProducts();
+  }
+  
+  @override
+  void didUpdateWidget(UnifiedProductGrid oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Only reload when query or brand changes
+    if (oldWidget.query != widget.query || oldWidget.selectedBrand != widget.selectedBrand) {
+      _loadProducts();
+    }
+  }
+  
+  Future<void> _loadProducts() async {
+    setState(() {
+      isLoading = true;
+    });
+    
+    try {
+      // Use get() instead of snapshots() to avoid continuous updates
+      QuerySnapshot snapshot = await FirebaseFirestore.instance
+        .collection('products')
+        .orderBy('watt', descending: true)
+        .get();
+        
+      List<QueryDocumentSnapshot<Object?>> filteredDocs = snapshot.docs;
+
+      if (widget.selectedBrand != null) {
+        filteredDocs = filteredDocs.where((doc) {
+          String name = doc['brand'].toString().toLowerCase();
+          return name == (widget.selectedBrand.toString().toLowerCase());
+        }).toList();
+      }
+
+      if (widget.query.isNotEmpty) {
+        filteredDocs = filteredDocs.where((doc) {
+          String name = doc['name'].toString().toLowerCase();
+          return name.contains(widget.query.toLowerCase());
+        }).toList();
+      }
+      
+      if (mounted) {
+        setState(() {
+          products = filteredDocs;
+          isLoading = false;
+        });
+      }
+    } catch (e) {
+      print("Error loading products: $e");
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
+    }
+  }
+  
+  @override
+  bool get wantKeepAlive => true;
+  
+  @override
   Widget build(BuildContext context) {
-    Query queryRef = FirebaseFirestore.instance.collection('products').orderBy('watt', descending: true);
+    super.build(context);
+    
+    if (isLoading) {
+      return SizedBox(
+        height: 200,
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
 
-    return StreamBuilder<QuerySnapshot>(
-      stream: queryRef.snapshots(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return SizedBox(
-            height: 200,
-            child: Center(child: CircularProgressIndicator()),
-          );
-        }
+    if (products.isEmpty) {
+      return SizedBox(
+        height: 200,
+        child: Center(child: Text('No Data Found')),
+      );
+    }
 
-        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-          return SizedBox(
-            height: 200,
-            child: Center(child: Text('No Data Found')),
-          );
-        }
-
-        List<QueryDocumentSnapshot<Object?>>? filteredDocs;
-        filteredDocs = snapshot.data?.docs;
-
-        if (selectedBrand != null) {
-          filteredDocs = snapshot.data!.docs.where((doc) {
-            String name = doc['brand'].toString().toLowerCase();
-            return name == (selectedBrand.toString().toLowerCase());
-          }).toList();
-        }
-
-        if (query.isNotEmpty) {
-          filteredDocs = snapshot.data!.docs.where((doc) {
-            String name = doc['name'].toString().toLowerCase();
-            return name.contains(query.toLowerCase());
-          }).toList();
-        }
-
-        if (filteredDocs?.isEmpty ?? false) {
-          return SizedBox(
-            height: 200,
-            child: Center(child: Text('No Data Found')),
-          );
-        }
-
-        // Using a non-scrollable grid that works within CustomScrollView
+    // Using a non-scrollable grid that works within CustomScrollView
+    return LayoutBuilder(
+      builder: (context, constraints) {
         return AlignedGridView.count(
-          crossAxisCount: 2,
+          crossAxisCount: constraints.maxWidth > 600 ? 3 : 2, // Responsive grid
           mainAxisSpacing: 16,
           crossAxisSpacing: 16,
           shrinkWrap: true,
           physics: NeverScrollableScrollPhysics(), // This is key for unified scrolling
-          itemCount: filteredDocs?.length ?? 0,
+          itemCount: products.length,
           itemBuilder: (context, index) {
-            var data = filteredDocs?[index].data() as Map<String, dynamic>;
+            var data = products[index].data() as Map<String, dynamic>;
             return InkWell(
               onTap: () {
-                ProductDetailsScreen(data, productId: filteredDocs?[index].id)
+                ProductDetailsScreen(data, productId: products[index].id)
                     .launch(context, pageRouteAnimation: PageRouteAnimation.Slide);
               },
-              child: ProductCard(data, productId: filteredDocs?[index].id),
+              child: ProductCard(data, productId: products[index].id),
             );
           },
         );
-      },
+      }
     );
   }
 }
@@ -354,47 +399,59 @@ class BrandSelector extends StatelessWidget {
       children: [
         const Text("Choose Brand", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
         const SizedBox(height: 10),
-        Container(
-          height: 60.0,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min, // Change to min to prevent expansion
-              children: [
-                SizedBox(
-                  height: 60,
-                  child: ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: brands.length,
-                    separatorBuilder: (_, __) => const SizedBox(width: 10),
-                    itemBuilder: (context, index) {
-                      return ChoiceChip(
-                        showCheckmark: false,
-                        label: Row(
-                          children: [
-                            Image.network(brands[index]["imageUrl"]!, width: 40, height: 50),
-                            const SizedBox(width: 8),
-                            Text(brands[index]["name"]!),
-                          ],
-                        ),
-                        selected: selectedIndex == index,
-                        onSelected: (bool selected) {
-                          if(selectedIndex==index) {
-                            onBrandSelected(-1);
-                          }else{
-                            onBrandSelected(index);
-                          }
+        SizedBox(
+          height: 70.0, // Further increased height to prevent overflow completely
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: brands.length,
+            physics: const BouncingScrollPhysics(), // Smoother scrolling
+            padding: EdgeInsets.symmetric(vertical: 4), // Add padding for better appearance
+            separatorBuilder: (_, __) => const SizedBox(width: 10),
+            itemBuilder: (context, index) {
+              return ChoiceChip(
+                showCheckmark: false,
+                padding: EdgeInsets.symmetric(horizontal: 6, vertical: 4), // Adjusted padding
+                label: Row(
+                  mainAxisSize: MainAxisSize.min, // Minimize horizontal space used
+                  children: [
+                    Container(
+                      width: 36,
+                      height: 36, // Further reduced size to prevent overflow
+                      child: Image.network(
+                        brands[index]["imageUrl"] ?? "",
+                        width: 36,
+                        height: 36,
+                        fit: BoxFit.contain,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Image.asset('assets/images/img.png', width: 36, height: 36);
                         },
-                        selectedColor: Colors.blue.withOpacity(0.2),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      );
-                    },
-                  ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Flexible(
+                      child: Text(
+                        brands[index]["name"] ?? "",
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                        style: TextStyle(fontSize: 13), // Slightly smaller text
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+                selected: selectedIndex == index,
+                onSelected: (bool selected) {
+                  if(selectedIndex==index) {
+                    onBrandSelected(-1);
+                  }else{
+                    onBrandSelected(index);
+                  }
+                },
+                selectedColor: Colors.blue.withOpacity(0.2),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              );
+            },
           ),
         ),
       ],
@@ -472,7 +529,7 @@ class _ProductCardState extends State<ProductCard> {
 
   @override
   Widget build(BuildContext context) {
-    List<dynamic> ratingValues = widget.data?['rate'].toList();
+    List<dynamic> ratingValues = widget.data?['rate']?.toList() ?? [];
     double totalRating = ratingValues.fold(0, (sum, rating) => sum + rating);
     double averageRating = ratingValues.isNotEmpty ? totalRating / ratingValues.length : 0;
 
@@ -488,13 +545,32 @@ class _ProductCardState extends State<ProductCard> {
           child: Stack(
             children: [
               Container(
-                height: 250,
+                height: 230, // Reduced height slightly to prevent overflow
                 width: double.infinity,
                 decoration: BoxDecoration(
                   borderRadius:
                   const BorderRadius.vertical(top: Radius.circular(12)),
                 ),
-                child:widget.data?['image_url']==null ?SizedBox(): Image.network(widget.data?['image_url']),
+                child: widget.data?['image_url'] == null || (widget.data?['image_url'] as String).isEmpty
+                    ? Image.asset('assets/images/img.png', fit: BoxFit.contain)
+                    : Image.network(
+                        widget.data?['image_url'],
+                        fit: BoxFit.contain,
+                        errorBuilder: (context, error, stackTrace) {
+                          // Handle network image loading errors
+                          return Image.asset('assets/images/img.png', fit: BoxFit.contain);
+                        },
+                        loadingBuilder: (context, child, loadingProgress) {
+                          if (loadingProgress == null) return child;
+                          return Center(
+                            child: CircularProgressIndicator(
+                              value: loadingProgress.expectedTotalBytes != null
+                                  ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                                  : null,
+                            ),
+                          );
+                        },
+                      ),
               ),
               if(widget.isFromAdmin) Positioned(
                 top: 16,
@@ -603,35 +679,40 @@ class _ProductCardState extends State<ProductCard> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                widget.data!['brand'],
+                widget.data!['brand'] ?? '',
                 maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                     fontWeight: FontWeight.w700,
-                    fontSize: 16,
+                    fontSize: 14,
                     color: Colors.blue),
               ),
               Text(
-                widget.data!['name'],
-                // maxLines: 2,
-                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                widget.data!['name'] ?? '',
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
               ),
               SizedBox(height: 4),
-              SizedBox(height: 4),
               Row(
-                mainAxisAlignment: MainAxisAlignment.start,
-                spacing: 20,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  if(widget.data?['is_purchasable'])  Text(
-                    "PKR${widget.data!['price']}",
-                    maxLines: 1,
-                    style: TextStyle(
-                        color: Colors.black54, fontWeight: FontWeight.bold),
+                  if(widget.data?['is_purchasable'] == true) Flexible(
+                    child: Text(
+                      "PKR${widget.data!['price']}",
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                          color: Colors.black54, fontWeight: FontWeight.bold, fontSize: 12),
+                    ),
                   ),
                   Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.star, color: Colors.yellow, size: 16),
+                      Icon(Icons.star, color: Colors.yellow, size: 14),
                       Text(
-                        '$averageRating',
+                        '${averageRating.toStringAsFixed(1)}',
+                        style: TextStyle(fontSize: 12),
                       ),
                     ],
                   ),

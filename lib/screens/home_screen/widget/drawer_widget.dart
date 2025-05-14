@@ -18,6 +18,7 @@ import 'package:primax_lyalaty_program/widgets/images.dart';
 import '../../orders_screen/orders_screen.dart';
 import '../../personal_info.dart';
 import '../contact_us_screen.dart';
+import '../web_view_screen.dart';
 
 class DrawerWidget extends StatelessWidget {
   final String userName;
@@ -46,12 +47,12 @@ class DrawerWidget extends StatelessWidget {
                 children: [
                   // Profile Image
                   CircleAvatar(
-                    // child: Container(color: Colors.grey,),
                     radius: 30,
-                    backgroundImage:
-                        profileImageUrl != ""
-                            ? FileImage(File(profileImageUrl ?? ""))
-                            : AssetImage(Images.ellipse),
+                    backgroundImage: sharedPref.getString('user_id') != null
+                        ? (profileImageUrl != ""
+                            ? FileImage(File(profileImageUrl))
+                            : AssetImage(Images.ellipse)) as ImageProvider
+                        : AssetImage(Images.ellipse),
                   ),
                   const SizedBox(width: 16),
                   Expanded(
@@ -59,20 +60,23 @@ class DrawerWidget extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Text(
-                          "Hey, 👋",
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.normal,
-                          ),
-                        ),
                         Text(
-                          userName,
+                          sharedPref.getString('user_id') != null
+                              ? userName
+                              : "Guest User",
                           style: const TextStyle(
-                            fontSize: 14, // overflow: TextOverflow.ellipsis,
+                            fontSize: 14,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
+                        if (sharedPref.getString('user_id') == null)
+                          Text(
+                            "Sign in to access all features",
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey,
+                            ),
+                          ),
                       ],
                     ),
                   ),
@@ -174,27 +178,30 @@ class DrawerWidget extends StatelessWidget {
                     },
                   ),
 
-                  _buildDrawerItemIcon(
-                    context,
-                    icon: LucideIcons.info,
-                    label: 'About Us',
-                    onTap: () {
-                      // Replace with your About screen navigation
-                      AboutUsScreen(
-                        url: 'https://primaxsolarenergy.com/?page_id=61#',
-                        title: 'About Us',
-                      ).launch(context,
-                      pageRouteAnimation: PageRouteAnimation.Slide);
-                      ZoomDrawer.of(context)?.close();
-                    },
-                  ),
+                  // _buildDrawerItemIcon(
+                  //   context,
+                  //   icon: LucideIcons.info,
+                  //   label: 'About Us',
+                  //   onTap: () {
+                  //     // Replace with your About screen navigation
+                  //     AboutUsScreen(
+                  //       url: 'https://primaxsolarenergy.com/?page_id=61#',
+                  //       title: 'About Us',
+                  //     ).launch(context,
+                  //     pageRouteAnimation: PageRouteAnimation.Slide);
+                  //     ZoomDrawer.of(context)?.close();
+                  //   },
+                  // ),
                   _buildDrawerItemIcon(
                     context,
                     icon: LucideIcons.contact,
-                    label: 'Contact Us',
+                    label: 'Complaint Registration ',
                     onTap: () {
                       // Replace with your Contact Us screen navigation
-                      ContactUsScreen().launch(context,
+                      WebViewScreen(
+                        url: 'https://primaxsolarenergy.com/?page_id=1610',
+                        title: 'Contact us',
+                      ).launch(context,
                           pageRouteAnimation: PageRouteAnimation.Slide);
 
                       ZoomDrawer.of(context)?.close();

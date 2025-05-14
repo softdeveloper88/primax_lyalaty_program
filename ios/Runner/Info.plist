@@ -24,9 +24,30 @@
 	<string>????</string>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<key>GMSApiKey</key>
+	<string>AIzaSyDXCUC2HiimXAZ1kV25rT7wlmURbJUtE-o</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>LSSupportsOpeningDocumentsInPlace</key>
+	<true/>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<true/>
+	</dict>
+	<key>NSCameraUsageDescription</key>
+	<string>This app needs camera access to take profile pictures and upload documents.</string>
+	<key>NSDocumentsFolderUsageDescription</key>
+	<string>$(PRODUCT_NAME) needs access to save your downloaded files</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>This app needs access to your location to show nearby stores and calculate distance.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>This app needs permission to save photos to your library.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>This app needs access to your photo library to select profile pictures and upload documents.</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
+	<true/>
+	<key>UIFileSharingEnabled</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
@@ -45,36 +66,7 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
-	<key>UIFileSharingEnabled</key>
-    <true/>
-    <key>LSSupportsOpeningDocumentsInPlace</key>
-    <true/>
-    <key>NSDocumentsFolderUsageDescription</key>
-    <string>$(PRODUCT_NAME) needs access to save your downloaded files</string>
-    
-    <!-- Location permissions -->
-    <key>NSLocationWhenInUseUsageDescription</key>
-    <string>This app needs access to your location to show nearby stores and calculate distance.</string>
-    
-    <!-- Camera and Photo Library permissions -->
-    <key>NSCameraUsageDescription</key>
-    <string>This app needs camera access to take profile pictures and upload documents.</string>
-    <key>NSPhotoLibraryUsageDescription</key>
-    <string>This app needs access to your photo library to select profile pictures and upload documents.</string>
-    <key>NSPhotoLibraryAddUsageDescription</key>
-    <string>This app needs permission to save photos to your library.</string>
-    
-    <!-- File access permissions -->
-    <key>NSAppTransportSecurity</key>
-    <dict>
-        <key>NSAllowsArbitraryLoads</key>
-        <true/>
-    </dict>
-    
-    <!-- Google Maps API Key -->
-    <key>io.flutter.embedded_views_preview</key>
-    <true/>
-    <key>GMSApiKey</key>
-    <string>AIzaSyDXCUC2HiimXAZ1kV25rT7wlmURbJUtE-o</string>
+	<key>io.flutter.embedded_views_preview</key>
+	<true/>
 </dict>
 </plist>

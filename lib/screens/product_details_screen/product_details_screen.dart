@@ -37,7 +37,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
   void initState() {
     productImages=widget.data?['gallery'];
     sizes=widget.data?['size'];
-    selectImageUrl=widget.data?['image_url'];
+    selectImageUrl=widget.data?['gallery'][0];
     // TODO: implement initState
     super.initState();
   }
@@ -132,14 +132,14 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
             ),
             // Bottom Sheet
             DraggableScrollableSheet(
-              initialChildSize: 0.6, // Half screen initially
-              minChildSize: 0.6,     // Minimum size (half screen)
+              initialChildSize: 0.65, // Slightly larger to show gallery fully
+              minChildSize: 0.65,     // Minimum size to ensure gallery visibility
               maxChildSize: 1.0,     // Full screen when expanded
               snap: true,
-              snapSizes: const [0.6, 1.0],
+              snapSizes: const [0.65, 1.0],
               builder: (context, scrollController) {
                 return Container(
-                  padding: const EdgeInsets.all(16),
+                  padding: EdgeInsets.only(left: 16, right: 16, top: 16, bottom: widget.data?['is_purchasable'] ? 80 : 16),
                   decoration: const BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.only(
@@ -198,36 +198,40 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                               // Gallery Section
                               const Text("Gallery", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                               const SizedBox(height: 8),
-                            SingleChildScrollView(
-                              scrollDirection: Axis.horizontal,
-                              child: Row(
-                                children: List.generate(productImages.length, (index) {
-                                  final img = productImages[index];
-
-                                  return GestureDetector(
-                                    onTap: () {
-                                      setState(() {
-                                        _currentIndex = index;
-                                        selectImageUrl = img;
-                                      });
-                                    },
-                                    child: Container(
-                                      margin: const EdgeInsets.only(right: 8),
-                                      padding: const EdgeInsets.all(4),
-                                      decoration: BoxDecoration(
-                                        border: Border.all(
-                                          color: _currentIndex == index ? Colors.blue : Colors.grey,
-                                          width: 2,
+                            Container(
+                              height: 80, // Fixed height for the gallery
+                              margin: EdgeInsets.only(bottom: 16), // Add bottom margin
+                              child: SingleChildScrollView(
+                                scrollDirection: Axis.horizontal,
+                                child: Row(
+                                  children: List.generate(productImages.length, (index) {
+                                    final img = productImages[index];
+  
+                                    return GestureDetector(
+                                      onTap: () {
+                                        setState(() {
+                                          _currentIndex = index;
+                                          selectImageUrl = img;
+                                        });
+                                      },
+                                      child: Container(
+                                        margin: const EdgeInsets.only(right: 8),
+                                        padding: const EdgeInsets.all(4),
+                                        decoration: BoxDecoration(
+                                          border: Border.all(
+                                            color: _currentIndex == index ? Colors.blue : Colors.grey,
+                                            width: 2,
+                                          ),
+                                          borderRadius: BorderRadius.circular(10),
                                         ),
-                                        borderRadius: BorderRadius.circular(10),
+                                        child: ClipRRect(
+                                          borderRadius: BorderRadius.circular(8),
+                                          child: Image.network(img, width: 60, height: 60, fit: BoxFit.cover),
+                                        ),
                                       ),
-                                      child: ClipRRect(
-                                        borderRadius: BorderRadius.circular(8),
-                                        child: Image.network(img, width: 60, height: 60, fit: BoxFit.cover),
-                                      ),
-                                    ),
-                                  );
-                                }),
+                                    );
+                                  }),
+                                ),
                               ),
                             ),
 

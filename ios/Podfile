@@ -10,6 +10,12 @@ project 'Runner', {
   'Release' => :release,
 }
 
+# Add the Firebase pod for Google Analytics
+pod 'FirebaseAnalytics'
+
+# Add the Firebase pod for Firebase Messaging
+pod 'Firebase/Messaging', '11.8.0'
+
 def flutter_root
   generated_xcode_build_settings_path = File.expand_path(File.join('..', 'Flutter', 'Generated.xcconfig'), __FILE__)
   unless File.exist?(generated_xcode_build_settings_path)
@@ -40,5 +46,10 @@ end
 post_install do |installer|
   installer.pods_project.targets.each do |target|
     flutter_additional_ios_build_settings(target)
+    
+    # Enable ALL of the Pods' deployment targets to be >= iOS 14
+    target.build_configurations.each do |config|
+      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '14.0'
+    end
   end
 end

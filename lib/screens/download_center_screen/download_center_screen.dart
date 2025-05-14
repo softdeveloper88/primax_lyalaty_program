@@ -79,6 +79,64 @@ class _DownloadCenterScreenState extends State<DownloadCenterScreen> {
     });
   }
 
+  Future<void> _viewOrDownloadFile(String url, String fileName, BuildContext context) async {
+    try {
+      // Show loading indicator
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext context) {
+          return Center(
+            child: Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 10),
+                  Text("Loading...", style: TextStyle(fontSize: 12)),
+                ],
+              ),
+            ),
+          );
+        },
+      );
+
+      // Get temporary directory to store the file for viewing
+      Directory tempDir = await getTemporaryDirectory();
+      String tempPath = "${tempDir.path}/$fileName";
+      File tempFile = File(tempPath);
+      
+      // Check if file already exists in temp directory
+      bool fileExists = await tempFile.exists();
+      
+      if (!fileExists) {
+        // Download the file
+        await Dio().download(url, tempPath);
+      }
+      
+      // Close loading dialog
+      Navigator.pop(context);
+      
+      // Open the file
+      final result = await OpenFile.open(tempPath);
+      if (result.type != ResultType.done) {
+        // If opening fails, show error
+        _showSnackBar(context, "Could not open file: ${result.message}");
+      }
+    } catch (e) {
+      // Close loading dialog if open
+      Navigator.pop(context);
+      _showSnackBar(context, "Error opening file: ${e.toString()}");
+      print("Error viewing file: $e");
+    }
+  }
+
   Future<void> downloadFile(String url, String fileName, BuildContext context) async {
     if (Platform.isAndroid) {
       await _androidDownload(url, fileName, context);
@@ -297,73 +355,92 @@ class _DownloadCenterScreenState extends State<DownloadCenterScreen> {
                   itemCount: documents.length,
                   itemBuilder: (context, index) {
                     var data = documents[index].data() as Map<String, dynamic>;
-                    return Stack(
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: Image.network(
-                            data['image'],
-                            width: double.infinity,
-                            height: double.infinity,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) =>
-                            const Icon(Icons.broken_image, size: 80),
-                          ),
-                        ),
-                        Positioned(
-                            bottom: 0,
-                            right: 0,
-                            left:0,
-                            child:Container(
-                                padding:  EdgeInsets.symmetric(
-                                    vertical: 10, horizontal: 6),
-                                decoration:  BoxDecoration(
-                                  color:Colors.black54,
-                                  // gradient: LinearGradient(
-                                  //   colors: [Color(0xFF47C6EB), Color(0xFF54E88C)],
-                                  //   begin: Alignment.topLeft,
-                                  //   end: Alignment.bottomRight,
-                                  // ),
-                                  borderRadius: BorderRadius.only(
-                                      topLeft: Radius.circular(10),
-                                      bottomRight: Radius.circular(10)),
+                    return GestureDetector(
+                      // Make entire item tappable to view file
+                      onTap: () => _viewOrDownloadFile(data['file_url'], data['file_name'], context),
+                      child: Stack(
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: Image.network(
+                              data['image'],
+                              width: double.infinity,
+                              height: double.infinity,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) =>
+                              Container(
+                                color: Colors.grey[200],
+                                child: Center(
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.picture_as_pdf, size: 50, color: Colors.red),
+                                      SizedBox(height: 8),
+                                      Text(data['file_name'], 
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(fontSize: 10),
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                                child:Padding(
-                                  padding: const EdgeInsets.only(right: 10.0),
-                                  child: Text(data['file_name'],style: TextStyle(color: Colors.white),overflow: TextOverflow.visible, ),
-                                ))
-                        ),
-
-                        Positioned(
-                          bottom: 0,
-                          right: 0,
-                          child: GestureDetector(
-                            onTap: () =>
-                                downloadFile(data['file_url'], data['file_name'],context),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                  vertical: 10, horizontal: 6),
-                              decoration: const BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [Color(0xFF47C6EB), Color(0xFF54E88C)],
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                ),
-                                borderRadius: BorderRadius.only(
-                                    topLeft: Radius.circular(10),
-                                    bottomRight: Radius.circular(10)),
-                              ),
-                              child: SvgPicture.asset(
-                                height: 25,
-                                width: 25,
-                                'assets/icons/ic_download.svg',
-                                color: Colors.white,
                               ),
                             ),
                           ),
-                        ),
+                          Positioned(
+                              bottom: 0,
+                              right: 0,
+                              left:0,
+                              child:Container(
+                                  padding: EdgeInsets.symmetric(
+                                      vertical: 10, horizontal: 6),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black54,
+                                    borderRadius: BorderRadius.only(
+                                        bottomLeft: Radius.circular(12),
+                                        bottomRight: Radius.circular(12)),
+                                  ),
+                                  child: Padding(
+                                    padding: const EdgeInsets.only(right: 40.0),
+                                    child: Text(
+                                      data['file_name'],
+                                      style: TextStyle(color: Colors.white),
+                                      overflow: TextOverflow.ellipsis,
+                                      maxLines: 2,
+                                    ),
+                                  ))
+                          ),
+
+                          Positioned(
+                            bottom: 0,
+                            right: 0,
+                            child: GestureDetector(
+                              onTap: () => downloadFile(data['file_url'], data['file_name'], context),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                    vertical: 10, horizontal: 6),
+                                decoration: const BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [Color(0xFF47C6EB), Color(0xFF54E88C)],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ),
+                                  borderRadius: BorderRadius.only(
+                                      topLeft: Radius.circular(10),
+                                      bottomRight: Radius.circular(12)),
+                                ),
+                                child: SvgPicture.asset(
+                                  height: 25,
+                                  width: 25,
+                                  'assets/icons/ic_download.svg',
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ),
                       ],
-                    );
+                    ));
                   },
                 ),
               ),
