@@ -7,6 +7,45 @@
   "client": [
     {
       "client_info": {
+        "mobilesdk_app_id": "1:414170553736:android:5656f0cd827814b2f92e3d",
+        "android_client_info": {
+          "package_name": "com.primax.luck.draw.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "414170553736-ckph38ls8v4m749g3bjrfepga86pe6gk.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBTc1fFAoHbCOCA4Q2Q35LO0Ju1H8BerZM"
+        },
+        {
+          "current_key": "AIzaSyCmfyHmxODNkO16pSnD_HenPwjfpgdm5o4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "414170553736-ckph38ls8v4m749g3bjrfepga86pe6gk.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "414170553736-9tganab33a631k5qchst7dncpql338e5.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.primax.luck.draw.app"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
         "mobilesdk_app_id": "1:414170553736:android:3f93686db3baa9f4f92e3d",
         "android_client_info": {
           "package_name": "com.primax.solar.energy.app"
@@ -22,11 +61,22 @@
           }
         },
         {
+          "client_id": "414170553736-b47rm8l47u6h7tm6o9mg9fmtovr2a3i5.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.primax.solar.energy.app",
+            "certificate_hash": "0f370f266873a1edcba7f386eb3024385e14d2d7"
+          }
+        },
+        {
           "client_id": "414170553736-ckph38ls8v4m749g3bjrfepga86pe6gk.apps.googleusercontent.com",
           "client_type": 3
         }
       ],
       "api_key": [
+        {
+          "current_key": "AIzaSyBTc1fFAoHbCOCA4Q2Q35LO0Ju1H8BerZM"
+        },
         {
           "current_key": "AIzaSyCmfyHmxODNkO16pSnD_HenPwjfpgdm5o4"
         }
@@ -39,10 +89,10 @@
               "client_type": 3
             },
             {
-              "client_id": "414170553736-e07kd8ppd9cq3mgrkhogrtkp8eobcjd5.apps.googleusercontent.com",
+              "client_id": "414170553736-9tganab33a631k5qchst7dncpql338e5.apps.googleusercontent.com",
               "client_type": 2,
               "ios_info": {
-                "bundle_id": "com.primax.solar.energy.app"
+                "bundle_id": "com.primax.luck.draw.app"
               }
             }
           ]

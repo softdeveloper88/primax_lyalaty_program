@@ -50,7 +50,7 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyCmfyHmxODNkO16pSnD_HenPwjfpgdm5o4',
+    apiKey: 'AIzaSyBTc1fFAoHbCOCA4Q2Q35LO0Ju1H8BerZM',
     appId: '1:414170553736:android:3f93686db3baa9f4f92e3d',
     messagingSenderId: '414170553736',
     projectId: 'primax-ebb0c',
@@ -59,13 +59,12 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyDXCUC2HiimXAZ1kV25rT7wlmURbJUtE-o',
-    appId: '1:414170553736:ios:2523c003772b9a06f92e3d',
+    appId: '1:414170553736:ios:9822b3f7a7d20d53f92e3d',
     messagingSenderId: '414170553736',
     projectId: 'primax-ebb0c',
     storageBucket: 'primax-ebb0c.firebasestorage.app',
     androidClientId: '414170553736-6j6funmtb30eenjkm4adakirj2v1b9ll.apps.googleusercontent.com',
-    iosClientId: '414170553736-e07kd8ppd9cq3mgrkhogrtkp8eobcjd5.apps.googleusercontent.com',
-    iosBundleId: 'com.primax.solar.energy.app',
+    iosClientId: '414170553736-ds93kjlh3595ke68kaq9fh5ifcal8tvs.apps.googleusercontent.com',
+    iosBundleId: 'com.primaxsolarenergy.primax',
   );
-
 }
