@@ -7,6 +7,7 @@ class OrderModel {
   final String? customerId;
   final String? paymentStatus;
   final String? latestCharge;
+  final String? paymentReceiptUrl;
 
   OrderModel({
     required this.id,
@@ -17,6 +18,7 @@ class OrderModel {
     required this.customerId,
     required this.paymentStatus,
     required this.latestCharge,
+    this.paymentReceiptUrl,
   });
 
   // Convert JSON to OrderModel object
@@ -30,6 +32,7 @@ class OrderModel {
       customerId: json["customer"],
       paymentStatus: json["status"] ?? "unknown",
       latestCharge: json["latest_charge"] ?? "",
+      paymentReceiptUrl: json["payment_receipt_url"],
     );
   }
 
@@ -44,6 +47,7 @@ class OrderModel {
       "customer": customerId,
       "status": paymentStatus,
       "latest_charge": latestCharge,
+      "payment_receipt_url": paymentReceiptUrl,
     };
   }
 }

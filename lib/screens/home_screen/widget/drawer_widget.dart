@@ -199,7 +199,7 @@ class DrawerWidget extends StatelessWidget {
                     onTap: () {
                       // Replace with your Contact Us screen navigation
                       WebViewScreen(
-                        url: 'https://primaxsolarenergy.com/?page_id=1610',
+                        url: 'http://primaxloyaltyprogram.com/contact',
                         title: 'Contact us',
                       ).launch(context,
                           pageRouteAnimation: PageRouteAnimation.Slide);

@@ -3,6 +3,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:nb_utils/nb_utils.dart';
+import 'package:primax_lyalaty_program/screens/dashboard_screen/admin/bank_account/manage_bank_account_screen.dart';
 import 'package:primax_lyalaty_program/screens/dashboard_screen/admin/orders_screen/show_orders_screen.dart';
 import 'package:primax_lyalaty_program/screens/dashboard_screen/admin/products_screen/product_screen.dart';
 import 'package:primax_lyalaty_program/screens/dashboard_screen/admin/stores_screen/show_stores_screen.dart';
@@ -210,10 +211,11 @@ class _AdminDashboardState extends State<AdminDashboard> {
               ),
               Row(
                 children: [
-
                   buildDashboardCard('Brands', LucideIcons.image, Colors.teal,(){
                     ShowBrandsScreen().launch(context);
-
+                  }),
+                  buildDashboardCard('Bank Account', LucideIcons.landmark, Colors.purple,(){
+                    ManageBankAccountScreen().launch(context);
                   }),
                 ],
               ),

@@ -1,3 +1,5 @@
+import 'dart:isolate';
+import 'dart:ui';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_remote_config/firebase_remote_config.dart';
@@ -13,18 +15,30 @@ import 'core/utils/navigator_service.dart';
 import 'firebase_options.dart';
 import 'screens/onboard_screen/onboard_screen.dart';
 late SharedPreferences sharedPref;
+@pragma('vm:entry-point')
 class DownloadCallbackHandler {
-  static void callback(String id, DownloadTaskStatus status, int progress) {
+  @pragma('vm:entry-point')
+  static void callback(String id, int status, int progress) {
     // Handle download progress/status updates here
-    print("Download task ($id): $status, $progress%");
+    final SendPort? send = IsolateNameServer.lookupPortByName('download_isolate');
+    if (send != null) {
+      send.send([id, status, progress]);
+    }
+    print("Download task ($id): status=$status, progress=$progress%");
   }
 }
+
 Future<void> _initializeFlutterDownloader() async {
   try {
     await FlutterDownloader.initialize(
-        debug: true // Set to false for production
+      debug: true, // Set to false for production
+      ignoreSsl: true, // Allow downloads from all sources
     );
-    await FlutterDownloader.registerCallback(DownloadCallbackHandler.callback as DownloadCallback);
+    
+    // Register the download callback
+    FlutterDownloader.registerCallback(DownloadCallbackHandler.callback);
+    
+    print("Flutter Downloader initialized successfully");
   } catch (e) {
     print("Downloader initialization error: $e");
   }
@@ -32,9 +46,16 @@ Future<void> _initializeFlutterDownloader() async {
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Stripe.publishableKey = 'pk_test_51QwIYgGV6yY5eYxCWmBRW92CEt2dHLPqyCsTPkk59sB46aTTcf7u8SLFR6JyQaYf0IHZfWdNBFpfXSSErkDB1pEH00ThA5WaMc';
-  sharedPref=await SharedPreferences.getInstance();
-   _initializeFlutterDownloader();
+  // Initialize shared preferences
+  sharedPref = await SharedPreferences.getInstance();
+  
+  // Initialize Flutter Downloader with proper error handling
+  try {
+    await _initializeFlutterDownloader();
+    print("Flutter Downloader initialized successfully");
+  } catch (e) {
+    print("Error initializing Flutter Downloader: $e");
+  }
   // SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
   //   systemNavigationBarColor: Colors.white, // navigation bar color
   //   statusBarColor: Colors.white, // status bar color

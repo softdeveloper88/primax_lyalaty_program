@@ -1,4 +1,7 @@
+import 'dart:async';
 import 'dart:io';
+import 'dart:isolate';
+import 'dart:ui';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/material.dart';
@@ -10,6 +13,24 @@ import 'package:open_file/open_file.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+// Data class to track download status for each item
+class DownloadItem {
+  final String fileName;
+  final String url;
+  String? taskId;
+  String? filePath;
+  int progress = 0;
+  bool isDownloading = false;
+  bool isComplete = false;
+  bool hasError = false;
+  String? errorMessage;
+
+  DownloadItem({
+    required this.fileName,
+    required this.url,
+  });
+}
+
 class DownloadCenterScreen extends StatefulWidget {
   const DownloadCenterScreen({super.key});
 
@@ -18,23 +39,121 @@ class DownloadCenterScreen extends StatefulWidget {
 }
 
 class _DownloadCenterScreenState extends State<DownloadCenterScreen> {
+  // For FlutterDownloader callback
+  final ReceivePort _port = ReceivePort();
+  
+  // Maps to track download progress and status
+  Map<String, DownloadItem> _downloadItems = {};
+  
   int selectedCategory = 0; // 0 for Datasheets, 1 for User Manuals
   int selectedBrand = 0; // Index for selected brand
+  List<Map<String, String>> brands = [];
+  List<DocumentSnapshot> documents = [];
+  bool isLoading=true;
+  
+  // Stream controller for better progress updates
+  StreamController<Map<String, DownloadItem>> _progressController = StreamController<Map<String, DownloadItem>>.broadcast();
+  Stream<Map<String, DownloadItem>> get progressStream => _progressController.stream;
 
-   List<Map<String, String>> brands = [];
+  @override
+  void initState() {
+    super.initState();
+    _bindBackgroundIsolate();
+    
+    // Create a timer to refresh the UI periodically
+    Timer.periodic(Duration(milliseconds: 500), (timer) {
+      if (mounted && _downloadItems.isNotEmpty) {
+        // Push the current progress to the stream
+        _progressController.add(Map.from(_downloadItems));
+      }
+    });
+    
+    getBrandsData();
+  }
 
+  @override
+  void dispose() {
+    _unbindBackgroundIsolate();
+    _progressController.close();
+    super.dispose();
+  }
+
+  void _bindBackgroundIsolate() {
+    bool isSuccess = IsolateNameServer.registerPortWithName(
+        _port.sendPort, 'download_isolate');
+    if (!isSuccess) {
+      _unbindBackgroundIsolate();
+      _bindBackgroundIsolate();
+      return;
+    }
+    
+    _port.listen((dynamic data) {
+      String id = data[0];
+      int statusInt = data[1];
+      int progress = data[2];
+      
+      // Convert int status to DownloadTaskStatus
+      DownloadTaskStatus status = DownloadTaskStatus.values[statusInt];
+
+      // Find which file this taskId belongs to
+      String? fileName;
+      for (var entry in _downloadItems.entries) {
+        if (entry.value.taskId == id) {
+          fileName = entry.key;
+          break;
+        }
+      }
+
+      if (fileName != null) {
+        // Using mounted check to avoid calling setState after dispose
+        if (mounted) {
+          setState(() {
+            _downloadItems[fileName]!.progress = progress;
+            
+            if (status == DownloadTaskStatus.complete) {
+              _downloadItems[fileName]!.isComplete = true;
+              _downloadItems[fileName]!.isDownloading = false;
+              _onDownloadComplete(id, fileName);
+            } else if (status == DownloadTaskStatus.failed) {
+              _downloadItems[fileName]!.hasError = true;
+              _downloadItems[fileName]!.isDownloading = false;
+              _downloadItems[fileName]!.errorMessage = "Download failed";
+            }
+          });
+          
+          // Push the update to the stream for real-time UI updates
+          _progressController.add(Map.from(_downloadItems));
+        }
+      }
+    });
+  }
+
+  void _unbindBackgroundIsolate() {
+    IsolateNameServer.removePortNameMapping('download_isolate');
+  }
+
+  void _onDownloadComplete(String taskId, String? fileName) async {
+    // Handle the case if fileName is null
+    if (fileName == null) return;
+    
+    // Get the download task info
+    final tasks = await FlutterDownloader.loadTasksWithRawQuery(
+      query: "SELECT * FROM task WHERE task_id = '$taskId'",
+    );
+    
+    if (tasks != null && tasks.isNotEmpty) {
+      final task = tasks.first;
+      final filePath = task.savedDir + "/" + (task.filename ?? "");
+      
+      setState(() {
+        _downloadItems[fileName]!.filePath = filePath;
+      });
+    }
+  }
   final List<String> documentCategories = [
     "Product Datasheets",
     "Product User Manuals"
   ];
-
-  List<DocumentSnapshot> documents = [];
-  bool isLoading=true;
-  @override
-  void initState() {
-    super.initState();
-    getBrandsData();
-  }
   getBrandsData()  async {
     brands=await getBrands();
     fetchDocuments();
@@ -146,68 +265,267 @@ class _DownloadCenterScreenState extends State<DownloadCenterScreen> {
   }
   Future<void> _iosDownload(String url, String fileName, BuildContext context) async {
     try {
-      // iOS doesn't require storage permissions for app directories
-      final directory = await getApplicationDocumentsDirectory();
-      final savePath = "${directory.path}/$fileName";
+      // Create or update the download item entry
+      if (!_downloadItems.containsKey(fileName)) {
+        _downloadItems[fileName] = DownloadItem(fileName: fileName, url: url);
+      }
+      
+      // If already downloading, don't start again
+      if (_downloadItems[fileName]!.isDownloading) {
+        return;
+      }
+      
+      // Mark as downloading
+      setState(() {
+        _downloadItems[fileName]!.isDownloading = true;
+        _downloadItems[fileName]!.progress = 0;
+        _downloadItems[fileName]!.hasError = false;
+        _downloadItems[fileName]!.isComplete = false;
+      });
+      
+      // iOS version check
+      final iosInfo = await DeviceInfoPlugin().iosInfo;
+      final iosVersion = iosInfo.systemVersion;
+      
+      // Get the app's document directory (works on all iOS versions)
+      final documentDirectory = await getApplicationDocumentsDirectory();
+      
+      // Ensure the directory exists
+      if (!await documentDirectory.exists()) {
+        await documentDirectory.create(recursive: true);
+      }
+      
+      // Create a unique path with timestamp to avoid conflicts
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final savePath = "${documentDirectory.path}/${timestamp}_$fileName";
 
-      // Download using Dio
-      await Dio().download(url, savePath);
-
-      // Show success message with file location info
-      _showSnackBar(
-        context,
-        "Download complete! Access files in: Files app → Browse → On My iPhone → Primax",
+      // Configure Dio options for reliable downloading
+      final dio = Dio();
+      dio.options.responseType = ResponseType.bytes;
+      dio.options.followRedirects = true;
+      dio.options.receiveTimeout = const Duration(minutes: 5);
+      
+      // Download using Dio with progress tracking
+      final response = await dio.download(
+        url, 
+        savePath,
+        onReceiveProgress: (received, total) {
+          if (total != -1) {
+            // Use mounted check to prevent setState after dispose
+            if (mounted) {
+              int progress = (received / total * 100).round();
+              // Update progress directly on the item
+              setState(() {
+                _downloadItems[fileName]!.progress = progress;
+              });
+            }
+          }
+        },
+        options: Options(
+          headers: {
+            // Add any necessary headers for iOS downloads
+            "Connection": "keep-alive",
+          },
+        ),
       );
 
-      // Optional: Refresh file list if using a file browser
-      // if (Platform.isIOS) await refreshFileSystem();
-
+      // Check download success
+      if (response.statusCode == 200) {
+        // Update status to complete
+        if (mounted) {
+          setState(() {
+            _downloadItems[fileName]!.isComplete = true;
+            _downloadItems[fileName]!.isDownloading = false;
+            _downloadItems[fileName]!.filePath = savePath;
+          });
+        }
+        
+        // For iOS 13+ (more restrictions), remind users where to find files
+        if (iosVersion != null) {
+          // Parse major version as double
+          double? majorVersion = double.tryParse(iosVersion.split('.')[0]);
+          if (majorVersion != null && majorVersion >= 13.0) {
+            _showSnackBar(context, "File downloaded to app documents. Use Files app to access it.");
+          }
+        }
+      } else {
+        throw Exception("Download failed with status: ${response.statusCode}");
+      }
     } catch (e) {
+      if (mounted) {
+        setState(() {
+          _downloadItems[fileName]!.isDownloading = false;
+          _downloadItems[fileName]!.hasError = true;
+          _downloadItems[fileName]!.errorMessage = e.toString();
+        });
+      }
       _showSnackBar(context, "Download failed: ${e.toString()}");
       print("iOS Download Error: $e");
     }
   }
   void openDownloadedFile(String filePath) async {
     try {
-      final result = await OpenFile.open(filePath);
-      print("Open file result: ${result.message}");
+      // Check if file exists before attempting to open
+      final file = File(filePath);
+      if (!await file.exists()) {
+        _showSnackBar(context, "File not found. It may have been moved or deleted.");
+        return;
+      }
+      
+      // Try to open the file with appropriate handling for different platforms
+      final result = await OpenFile.open(
+        filePath,
+        type: _getFileType(filePath), // Specify file type based on extension
+      );
+      
+      if (result.type != ResultType.done) {
+        print("Open file result: ${result.message}");
+        
+        // Handle common issues
+        if (result.message.contains("No app associated")) {
+          _showSnackBar(context, "No app found to open this file type.");
+        } else {
+          _showSnackBar(context, "Could not open file: ${result.message}");
+        }
+      }
     } catch (e) {
       print("Error opening file: $e");
+      _showSnackBar(context, "Error opening file: ${e.toString()}");
     }
   }
+  
+  // Helper method to determine file MIME type
+  String? _getFileType(String filePath) {
+    final ext = filePath.split('.').last.toLowerCase();
+    switch (ext) {
+      case 'pdf':
+        return 'application/pdf';
+      case 'doc':
+      case 'docx':
+        return 'application/msword';
+      case 'xls':
+      case 'xlsx':
+        return 'application/vnd.ms-excel';
+      case 'ppt':
+      case 'pptx':
+        return 'application/vnd.ms-powerpoint';
+      case 'jpg':
+      case 'jpeg':
+        return 'image/jpeg';
+      case 'png':
+        return 'image/png';
+      case 'txt':
+        return 'text/plain';
+      default:
+        return null; // Let the system determine the type
+    }
+  }
+  
+  // This method was removed since open_file 3.5.10 doesn't support UTI parameter
 
   Future<void> _androidDownload(String url, String fileName, BuildContext context) async {
     try {
+      // Create or update the download item entry
+      if (!_downloadItems.containsKey(fileName)) {
+        _downloadItems[fileName] = DownloadItem(fileName: fileName, url: url);
+      }
+      
+      // If already downloading, don't start again
+      if (_downloadItems[fileName]!.isDownloading) {
+        return;
+      }
+      
+      // Mark as downloading
+      setState(() {
+        _downloadItems[fileName]!.isDownloading = true;
+        _downloadItems[fileName]!.progress = 0;
+        _downloadItems[fileName]!.hasError = false;
+        _downloadItems[fileName]!.isComplete = false;
+      });
+      
       final androidInfo = await DeviceInfoPlugin().androidInfo;
       final sdkVersion = androidInfo.version.sdkInt;
 
-      if (sdkVersion != null && sdkVersion < 29) {
-        // Legacy Android handling
-        // if (!await _requestStoragePermission()) return;
-                  final status = await Permission.storage.request();
-                  if (!status.isGranted) {
-                    _showSnackBar(context, "Storage permission denied!");
-                    return;
-                  }
+      // Request appropriate permissions based on Android version
+      bool permissionGranted = false;
+      
+      if (sdkVersion != null) {
+        if (sdkVersion >= 33) { // Android 13+
+          // For Android 13+ (API 33+), need media permissions
+          final downloads = await Permission.mediaLibrary.request();
+          permissionGranted = downloads.isGranted;
+        } else if (sdkVersion >= 29) { // Android 10-12
+          // For Android 10-12, we need storage permission
+          final status = await Permission.storage.request();
+          permissionGranted = status.isGranted;
+        } else { // Android 9 and below
+          // For older Android versions
+          final status = await Permission.storage.request();
+          permissionGranted = status.isGranted;
+        }
+      }
+      
+      if (!permissionGranted) {
+        setState(() {
+          _downloadItems[fileName]!.isDownloading = false;
+          _downloadItems[fileName]!.hasError = true;
+          _downloadItems[fileName]!.errorMessage = "Permission denied";
+        });
+        _showSnackBar(context, "Storage permission denied! Please grant permission in settings.");
+        return;
+      }
 
-        final directory = await getExternalStorageDirectory();
-        final savePath = "${directory!.path}/$fileName";
-        await Dio().download(url, savePath);
-        _showSnackBar(context, "Download completed: $fileName");
+      // Get the appropriate download directory based on Android version
+      Directory? directory;
+      if (sdkVersion != null && sdkVersion >= 29) {
+        // For Android 10+, use app's files directory or Downloads directory
+        directory = await getApplicationDocumentsDirectory();
       } else {
-        // Android 10+ using DownloadManager
-        final taskId = await FlutterDownloader.enqueue(
-          url: url,
-          savedDir: (await getExternalStorageDirectory())!.path,
-          fileName: fileName,
-          showNotification: true,
-          openFileFromNotification: true,
-          saveInPublicStorage: true,
-        );
+        // For older Android versions, use external storage
+        directory = await getExternalStorageDirectory();
+      }
+      
+      if (directory == null) {
+        setState(() {
+          _downloadItems[fileName]!.isDownloading = false;
+          _downloadItems[fileName]!.hasError = true;
+          _downloadItems[fileName]!.errorMessage = "Could not access storage directory";
+        });
+        _showSnackBar(context, "Could not access storage directory");
+        return;
+      }
 
-        _showSnackBar(context, "Download started - check notifications");
+      // Ensure the directory exists
+      if (!await directory.exists()) {
+        await directory.create(recursive: true);
+      }
+
+      // Use FlutterDownloader with appropriate parameters for each Android version
+      final taskId = await FlutterDownloader.enqueue(
+        url: url,
+        savedDir: directory.path,
+        fileName: fileName,
+        showNotification: true,
+        openFileFromNotification: false, // We'll handle this ourselves
+        saveInPublicStorage: sdkVersion != null && sdkVersion < 29, // Only use public storage for older Android versions
+        headers: {}, // Add any required headers for the download
+        requiresStorageNotLow: false,
+      );
+
+      // Store the task ID for progress tracking
+      if (taskId != null) {
+        setState(() {
+          _downloadItems[fileName]!.taskId = taskId;
+        });
+      } else {
+        throw Exception("Failed to start download task");
       }
     } catch (e) {
+      setState(() {
+        _downloadItems[fileName]!.isDownloading = false;
+        _downloadItems[fileName]!.hasError = true;
+        _downloadItems[fileName]!.errorMessage = e.toString();
+      });
       _showSnackBar(context, "Download error: ${e.toString()}");
       print("Download Error: $e");
     }
@@ -412,31 +730,203 @@ class _DownloadCenterScreenState extends State<DownloadCenterScreen> {
                                   ))
                           ),
 
+                          // Bottom bar for download controls and progress
                           Positioned(
                             bottom: 0,
                             right: 0,
-                            child: GestureDetector(
-                              onTap: () => downloadFile(data['file_url'], data['file_name'], context),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                    vertical: 10, horizontal: 6),
-                                decoration: const BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [Color(0xFF47C6EB), Color(0xFF54E88C)],
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                  ),
-                                  borderRadius: BorderRadius.only(
-                                      topLeft: Radius.circular(10),
-                                      bottomRight: Radius.circular(12)),
-                                ),
-                                child: SvgPicture.asset(
-                                  height: 25,
-                                  width: 25,
-                                  'assets/icons/ic_download.svg',
-                                  color: Colors.white,
-                                ),
-                              ),
+                            left: 0,
+                            child: Builder(
+                              builder: (context) {
+                                final fileName = data['file_name'];
+                                final downloadItem = _downloadItems[fileName];
+                                final isDownloading = downloadItem?.isDownloading ?? false;
+                                final isComplete = downloadItem?.isComplete ?? false;
+                                final hasError = downloadItem?.hasError ?? false;
+                                final progress = downloadItem?.progress ?? 0;
+
+                                if (isDownloading) {
+                                  // Use StreamBuilder for real-time progress updates
+                                  return StreamBuilder<Map<String, DownloadItem>>(
+                                    stream: progressStream,
+                                    initialData: _downloadItems,
+                                    builder: (context, snapshot) {
+                                      // Get the latest progress value
+                                      final items = snapshot.data;
+                                      final currentItem = items?[fileName];
+                                      final currentProgress = currentItem?.progress ?? 0;
+                                      
+                                      return Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            vertical: 8, horizontal: 8),
+                                        decoration: const BoxDecoration(
+                                          color: Colors.black54,
+                                          borderRadius: BorderRadius.only(
+                                              bottomLeft: Radius.circular(12),
+                                              bottomRight: Radius.circular(12)),
+                                        ),
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            LinearProgressIndicator(
+                                              value: currentProgress > 0 ? 
+                                                    currentProgress / 100 : 0.01,
+                                              backgroundColor: Colors.grey.shade600,
+                                              valueColor: AlwaysStoppedAnimation<Color>(
+                                                  const Color(0xFF54E88C)),
+                                            ),
+                                            SizedBox(height: 4),
+                                            Text(
+                                              "Downloading: $currentProgress%",
+                                              style: TextStyle(
+                                                  color: Colors.white, fontSize: 11),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    }
+                                  );
+                                } else if (isComplete) {
+                                  // Show open button when download is complete
+                                  return Container(
+                                    decoration: const BoxDecoration(
+                                      color: Colors.black54,
+                                      borderRadius: BorderRadius.only(
+                                          bottomLeft: Radius.circular(12),
+                                          bottomRight: Radius.circular(12)),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        // File name area
+                                        Expanded(
+                                          child: Padding(
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 10, vertical: 10),
+                                            child: Text(
+                                              fileName,
+                                              style: TextStyle(color: Colors.white),
+                                              overflow: TextOverflow.ellipsis,
+                                              maxLines: 1,
+                                            ),
+                                          ),
+                                        ),
+                                        // Open button
+                                        GestureDetector(
+                                          onTap: () {
+                                            if (downloadItem?.filePath != null) {
+                                              openDownloadedFile(downloadItem!.filePath!);
+                                            }
+                                          },
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(
+                                                vertical: 10, horizontal: 15),
+                                            decoration: const BoxDecoration(
+                                              gradient: LinearGradient(
+                                                colors: [Color(0xFF47C6EB), Color(0xFF54E88C)],
+                                                begin: Alignment.topLeft,
+                                                end: Alignment.bottomRight,
+                                              ),
+                                              borderRadius: BorderRadius.only(
+                                                  bottomRight: Radius.circular(12)),
+                                            ),
+                                            child: Text(
+                                              "OPEN",
+                                              style: TextStyle(
+                                                  color: Colors.white,
+                                                  fontWeight: FontWeight.bold),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                } else if (hasError) {
+                                  // Show retry button if there was an error
+                                  return Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 8, horizontal: 10),
+                                    decoration: const BoxDecoration(
+                                      color: Colors.red,
+                                      borderRadius: BorderRadius.only(
+                                          bottomLeft: Radius.circular(12),
+                                          bottomRight: Radius.circular(12)),
+                                    ),
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text(
+                                          "Download Failed",
+                                          style: TextStyle(color: Colors.white),
+                                        ),
+                                        GestureDetector(
+                                          onTap: () => downloadFile(data['file_url'], fileName, context),
+                                          child: Text(
+                                            "RETRY",
+                                            style: TextStyle(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.bold),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                } else {
+                                  // Default download button
+                                  return Row(
+                                    children: [
+                                      // File info area
+                                      Expanded(
+                                        child: Container(
+                                          padding: EdgeInsets.symmetric(
+                                              vertical: 10, horizontal: 6),
+                                          decoration: BoxDecoration(
+                                            color: Colors.black54,
+                                            borderRadius: BorderRadius.only(
+                                                bottomLeft: Radius.circular(12)),
+                                          ),
+                                          child: Padding(
+                                            padding: const EdgeInsets.only(
+                                                left: 6.0, right: 6.0),
+                                            child: Text(
+                                              fileName,
+                                              style:
+                                                  TextStyle(color: Colors.white),
+                                              overflow: TextOverflow.ellipsis,
+                                              maxLines: 1,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      // Download button
+                                      GestureDetector(
+                                        onTap: () => downloadFile(data['file_url'], fileName, context),
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(
+                                              vertical: 10, horizontal: 12),
+                                          decoration: const BoxDecoration(
+                                            gradient: LinearGradient(
+                                              colors: [
+                                                Color(0xFF47C6EB),
+                                                Color(0xFF54E88C)
+                                              ],
+                                              begin: Alignment.topLeft,
+                                              end: Alignment.bottomRight,
+                                            ),
+                                            borderRadius: BorderRadius.only(
+                                                bottomRight:
+                                                    Radius.circular(12)),
+                                          ),
+                                          child: SvgPicture.asset(
+                                            height: 25,
+                                            width: 25,
+                                            'assets/icons/ic_download.svg',
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  );
+                                }
+                              },
                             ),
                           ),
                       ],

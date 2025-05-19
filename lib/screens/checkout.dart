@@ -12,6 +12,7 @@ import 'package:http/http.dart' as http;
 import 'package:nb_utils/nb_utils.dart';
 import 'package:primax_lyalaty_program/core/order_model.dart';
 import 'package:primax_lyalaty_program/core/utils/comman_data.dart';
+import 'package:primax_lyalaty_program/core/utils/payment_receipt_dialog.dart';
 import 'package:primax_lyalaty_program/core/utils/progress_dialog_utils.dart';
 import 'package:primax_lyalaty_program/core/utils/show_receipt_dialog.dart';
 import 'package:primax_lyalaty_program/main.dart';
@@ -184,6 +185,19 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   displayPaymentSheet() async {
     try {
       await Stripe.instance.presentPaymentSheet().then((value) async {
+        // Show payment receipt dialog to upload image
+        double calculatedAmount = double.parse(widget.totals ?? '0.00') + (widget.shipping ?? 0.0);
+        PaymentResult? result = await showPaymentReceiptDialog(context, calculatedAmount);
+        if (result == null || result.receiptUrl == null) {
+          // User cancelled the upload
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Payment receipt upload was cancelled")),
+          );
+          return;
+        }
+        
+        String receiptUrl = result.receiptUrl!;
+        
         OrderModel order =
             OrderModel.fromJson(paymentIntent!); // Convert JSON to Order model
         String orderCode = _generateOrderCode();
@@ -205,10 +219,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           "paymentMethod": cardData['paymentMethod'] ?? "Unknown",
           "cardNumber": cardData['cardNumber'] ?? "**** **** **** ****",
           "orderStatus": "Pending",
-          "totalAmount":
-              double.parse(widget.totals ?? '0.00') + (widget.shipping ?? 0.0),
+          "totalAmount": double.parse(widget.totals ?? '0.00') + (widget.shipping ?? 0.0),
           "shippingCost": widget.shipping ?? 0.0,
           "orderedItems": cartItems,
+          "payment_receipt_url": receiptUrl, // Add receipt URL to order data
           "timestamp": Timestamp.now(),
         };
 
@@ -260,12 +274,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       );
       return;
     }
-    // if ( cardData.isEmpty ) {
-    //   ScaffoldMessenger.of(context).showSnackBar(
-    //     SnackBar(content: Text("Please add card information.")),
-    //   );
-    //   return;
-    // }
     if (cartItems.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Please complete cart data")),
@@ -279,6 +287,32 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         throw Exception('Please complete all required information');
       }
 
+      // Show payment receipt dialog to upload image
+      ProgressDialogUtils.showProgressDialog();
+      
+      // Get total amount
+      double totalAmount = double.parse(widget.totals ?? '0.00') + (widget.shipping ?? 0.0);
+      
+      // Skip Stripe and directly show payment receipt dialog
+      PaymentResult? result = await showPaymentReceiptDialog(context, totalAmount);
+      ProgressDialogUtils.hideProgressDialog();
+      
+      if (result == null || result.receiptUrl == null) {
+        // User cancelled the upload
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Payment receipt upload was cancelled")),
+        );
+        return;
+      }
+      
+      // Get payment amount from result
+      double paidAmount = double.tryParse(result.amount ?? totalAmount.toString()) ?? totalAmount;
+      
+      // Create an order without Stripe
+      directCreateOrder(context, paidAmount, result.receiptUrl!);
+      
+      // Comment out Stripe code
+      /*
       // Get total amount in cents
       int totalAmount = ((double.parse(widget.totals ?? '0') +
               double.parse(widget.shipping.toString())))
@@ -292,7 +326,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       } else {
         paymentWithoutSaveCard(context, totalAmount);
       }
+      */
     } catch (e) {
+      ProgressDialogUtils.hideProgressDialog();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Payment failed: ${e.toString()}')),
       );
@@ -317,13 +353,33 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           .then((value) {});
       try {
         // await Stripe.instance.presentPaymentSheet();
+        ProgressDialogUtils.hideProgressDialog();
+        
+        // Show payment receipt dialog to upload image
+        double calculatedAmount = double.parse(widget.totals ?? '0.00') + (widget.shipping ?? 0.0);
+        PaymentResult? result = await showPaymentReceiptDialog(context, calculatedAmount);
+        if (result == null || result.receiptUrl == null) {
+          // User cancelled the upload
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Payment receipt upload was cancelled")),
+          );
+          return;
+        }
+        
+        String receiptUrl = result.receiptUrl!;
 
+        ProgressDialogUtils.showProgressDialog();
+        
         // Payment was successful, now show receipt dialog
         OrderModel order =
             OrderModel.fromJson(paymentIntent!); // Convert JSON to Order model
         String orderCode = _generateOrderCode();
         String userId = sharedPref.getString('user_id')??'';
         print(order.paymentStatus);
+        
+        // Get payment amount from result
+        double paidAmount = double.tryParse(result.amount ?? calculatedAmount.toString()) ?? calculatedAmount;
+        
         Map<String, dynamic> orderData = {
           "orderCode": orderCode,
           "orderId": order.id,
@@ -340,10 +396,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           "paymentMethod": cardData['paymentMethod'] ?? "Unknown",
           "cardNumber": cardData['cardNumber'] ?? "**** **** **** ****",
           "orderStatus": "Pending",
-          "totalAmount":
-              double.parse(widget.totals ?? '0.00') + (widget.shipping ?? 0.0),
+          "totalAmount": paidAmount,
+          "originalAmount": calculatedAmount,
           "shippingCost": widget.shipping ?? 0.0,
           "orderedItems": cartItems,
+          "payment_receipt_url": receiptUrl, // Add receipt URL to order data
           "timestamp": Timestamp.now(),
         };
 
@@ -423,6 +480,81 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     }
   }
 
+  /// **Create order without Stripe payment**
+  Future<void> directCreateOrder(BuildContext context, double paidAmount, String receiptUrl) async {
+    try {
+      ProgressDialogUtils.showProgressDialog();
+      
+      // Generate order code
+      String orderCode = _generateOrderCode();
+      String userId = sharedPref.getString('user_id') ?? '';
+      
+      // Create order data
+      Map<String, dynamic> orderData = {
+        "orderCode": orderCode,
+        "orderId": "MANUAL_${DateTime.now().millisecondsSinceEpoch}",
+        "paymentMethodId": "MANUAL_PAYMENT",
+        "customer": userId,
+        "latest_charge": "",
+        "userId": userId,
+        "customerName": userData['fullName'] ?? "N/A",
+        "customerEmail": userData['email'] ?? "N/A",
+        "customerPhone": userData['phone'] ?? "N/A",
+        "address": _selectedAddress,
+        "latitude": _selectedLocation.latitude,
+        "longitude": _selectedLocation.longitude,
+        "paymentMethod": "Bank Transfer", 
+        "cardNumber": "",
+        "orderStatus": "Pending",
+        "totalAmount": paidAmount,
+        "originalAmount": double.parse(widget.totals ?? '0.00') + (widget.shipping ?? 0.0),
+        "shippingCost": widget.shipping ?? 0.0,
+        "orderedItems": cartItems,
+        "payment_receipt_url": receiptUrl, // Add receipt URL to order data
+        "timestamp": Timestamp.now(),
+      };
+      
+      // Store order in Firestore
+      await FirebaseFirestore.instance
+          .collection("orders")
+          .doc(orderCode)
+          .set(orderData);
+      
+      // Clear cart after order placement
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection('cart')
+          .get()
+          .then((snapshot) {
+        for (DocumentSnapshot doc in snapshot.docs) {
+          doc.reference.delete();
+        }
+      });
+      
+      // Send notification
+      sendNotificationToAllUsers(
+        userId: sharedPref.getString('user_id'),
+        title: 'You have placed a new order successfully',
+        type: 'order_placed',
+        id: '',
+        newPrice: 0.0,
+        oldPrice: 0.0,
+      );
+      
+      ProgressDialogUtils.hideProgressDialog();
+      
+      // Show success dialog
+      _showOrderSuccessDialog();
+      
+    } catch (e) {
+      ProgressDialogUtils.hideProgressDialog();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to create order: ${e.toString()}')),
+      );
+    }
+  }
+
   /// **Show Order Success Dialog**
   void _showOrderSuccessDialog() {
     showDialog(
@@ -491,7 +623,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                       SizedBox(height: 20),
                       _buildAddressSection(),
                       SizedBox(height: 20),
-                      _buildShippingInfo(),
+                      // _buildShippingInfo(),
                     ],
                   ),
                 ),

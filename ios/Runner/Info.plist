@@ -39,6 +39,15 @@
     <string>This app needs camera access to take profile pictures and upload documents.</string>
     <key>NSDocumentsFolderUsageDescription</key>
     <string>$(PRODUCT_NAME) needs access to save your downloaded files</string>
+    <key>NSDownloadsUsageDescription</key>
+    <string>$(PRODUCT_NAME) needs access to your Downloads folder to save downloaded files</string>
+    <key>UIBackgroundModes</key>
+    <array>
+       <string>processing</string>
+       <string>fetch</string>
+    </array>
+    <key>UISupportsDocumentBrowser</key>
+    <true/>
     <key>NSLocationWhenInUseUsageDescription</key>
     <string>This app needs access to your location to show nearby stores and calculate distance.</string>
     <key>NSMicrophoneUsageDescription</key>
