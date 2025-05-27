@@ -9,6 +9,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:nb_utils/nb_utils.dart';
 import 'package:primax_lyalaty_program/screens/dashboard_screen/admin/events/add_news_event.dart';
 import 'package:primax_lyalaty_program/screens/login_screen/login_screen.dart';
+import 'package:primax_lyalaty_program/widgets/media_viewer_widget.dart';
 import '../../core/utils/comman_data.dart';
 import '../../main.dart';
 import '../../widgets/custom_button.dart';
@@ -351,6 +352,7 @@ class NewsCard extends StatefulWidget {
 }
 class _NewsCardState extends State<NewsCard> {
   int _currentIndex = 0;
+
   Future<bool> isRegister(String eventId) async {
     DocumentSnapshot eventSnapshot = await FirebaseFirestore.instance.collection('events').doc(eventId).get();
 
@@ -450,8 +452,8 @@ class _NewsCardState extends State<NewsCard> {
                 children: [
                   CarouselSlider(
                     items: imageUrls.map((imageUrl) {
-                      return Image.network(
-                        imageUrl,
+                      return MediaViewerWidget(
+                        mediaUrl: imageUrl,
                         height: 200,
                         width: double.infinity,
                         fit: BoxFit.cover,
@@ -459,7 +461,7 @@ class _NewsCardState extends State<NewsCard> {
                     }).toList(),
                     options: CarouselOptions(
                       height: 180,
-                      autoPlay: true,
+                      autoPlay: false,
                       enlargeCenterPage: true,
                       viewportFraction: 1.0,
                       onPageChanged: (index, reason) {

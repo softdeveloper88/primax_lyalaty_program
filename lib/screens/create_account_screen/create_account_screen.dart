@@ -216,55 +216,55 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
               ),
             ),
             const SizedBox(height: 30),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: const [
-                Expanded(
-                    child: Divider(
-                  color: Colors.blueGrey,
-                  indent: 2,
-                  endIndent: 10,
-                )),
-                Text('Or'),
-                Expanded(
-                    child: Divider(
-                  color: Colors.blueGrey,
-                  indent: 10,
-                  endIndent: 2,
-                )),
-              ],
-            ),
-            const SizedBox(height: 20),
-            Row(
-              spacing: 10,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  decoration: BoxDecoration(
-                      color: AppColors.background,
-                      borderRadius: BorderRadius.circular(40)),
-                  child: IconButton(
-                    onPressed: () {
-                      onPressedGoogleLogin(context);
-                      // Google login
-                    },
-                    icon: SvgPicture.asset('assets/icons/ic_google.svg'),
-                  ),
-                ),
-                Container(
-                  decoration: BoxDecoration(
-                      color: AppColors.background,
-                      borderRadius: BorderRadius.circular(40)),
-                  child: IconButton(
-                    onPressed: () {
-                      signInWithApple(context);
-                      // Apple login
-                    },
-                    icon: SvgPicture.asset('assets/icons/ic_apple.svg'),
-                  ),
-                ),
-              ],
-            ),
+            // Row(
+            //   mainAxisAlignment: MainAxisAlignment.center,
+            //   children: const [
+            //     Expanded(
+            //         child: Divider(
+            //       color: Colors.blueGrey,
+            //       indent: 2,
+            //       endIndent: 10,
+            //     )),
+            //     Text('Or'),
+            //     Expanded(
+            //         child: Divider(
+            //       color: Colors.blueGrey,
+            //       indent: 10,
+            //       endIndent: 2,
+            //     )),
+            //   ],
+            // ),
+            // const SizedBox(height: 20),
+            // Row(
+            //   spacing: 10,
+            //   mainAxisAlignment: MainAxisAlignment.center,
+            //   children: [
+            //     Container(
+            //       decoration: BoxDecoration(
+            //           color: AppColors.background,
+            //           borderRadius: BorderRadius.circular(40)),
+            //       child: IconButton(
+            //         onPressed: () {
+            //           onPressedGoogleLogin(context);
+            //           // Google login
+            //         },
+            //         icon: SvgPicture.asset('assets/icons/ic_google.svg'),
+            //       ),
+            //     ),
+            //     Container(
+            //       decoration: BoxDecoration(
+            //           color: AppColors.background,
+            //           borderRadius: BorderRadius.circular(40)),
+            //       child: IconButton(
+            //         onPressed: () {
+            //           signInWithApple(context);
+            //           // Apple login
+            //         },
+            //         icon: SvgPicture.asset('assets/icons/ic_apple.svg'),
+            //       ),
+            //     ),
+            //   ],
+            // ),
           ],
         ),
       ),

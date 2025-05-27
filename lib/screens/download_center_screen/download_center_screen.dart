@@ -706,30 +706,6 @@ class _DownloadCenterScreenState extends State<DownloadCenterScreen> {
                               ),
                             ),
                           ),
-                          Positioned(
-                              bottom: 0,
-                              right: 0,
-                              left:0,
-                              child:Container(
-                                  padding: EdgeInsets.symmetric(
-                                      vertical: 10, horizontal: 6),
-                                  decoration: BoxDecoration(
-                                    color: Colors.black54,
-                                    borderRadius: BorderRadius.only(
-                                        bottomLeft: Radius.circular(12),
-                                        bottomRight: Radius.circular(12)),
-                                  ),
-                                  child: Padding(
-                                    padding: const EdgeInsets.only(right: 40.0),
-                                    child: Text(
-                                      data['file_name'],
-                                      style: TextStyle(color: Colors.white),
-                                      overflow: TextOverflow.ellipsis,
-                                      maxLines: 2,
-                                    ),
-                                  ))
-                          ),
-
                           // Bottom bar for download controls and progress
                           Positioned(
                             bottom: 0,

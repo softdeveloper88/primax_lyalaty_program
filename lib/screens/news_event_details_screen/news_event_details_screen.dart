@@ -8,6 +8,7 @@ import 'package:primax_lyalaty_program/core/utils/comman_data.dart';
 import 'package:primax_lyalaty_program/main.dart';
 import 'package:primax_lyalaty_program/screens/login_screen/login_screen.dart';
 import 'package:primax_lyalaty_program/widgets/custom_button.dart';
+import 'package:primax_lyalaty_program/widgets/media_viewer_widget.dart';
 
 class NewsEventDetailsScreen extends StatefulWidget {
   NewsEventDetailsScreen(this.data,this.isEvent, {super.key});
@@ -99,8 +100,8 @@ class _NewsEventDetailsScreenState extends State<NewsEventDetailsScreen> {
                 children: [
                   CarouselSlider(
                     items: imageUrls.map((imageUrl) {
-                      return Image.network(
-                        imageUrl,
+                      return MediaViewerWidget(
+                        mediaUrl: imageUrl,
                         height: 300,
                         width: double.infinity,
                         fit: BoxFit.cover,
@@ -108,7 +109,7 @@ class _NewsEventDetailsScreenState extends State<NewsEventDetailsScreen> {
                     }).toList(),
                     options: CarouselOptions(
                       height: 300,
-                      autoPlay: true,
+                      autoPlay: false,
                       enlargeCenterPage: true,
                       viewportFraction: 1.0,
                       onPageChanged: (index, reason) {
