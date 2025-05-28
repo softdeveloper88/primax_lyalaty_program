@@ -7,7 +7,7 @@
     <key>CFBundleDevelopmentRegion</key>
     <string>PKR(DEVELOPMENT_LANGUAGE)</string>
     <key>CFBundleDisplayName</key>
-    <string>Primax Lyalaty Program</string>
+    <string>Primax</string>
     <key>CFBundleExecutable</key>
     <string>$(EXECUTABLE_NAME)</string>
     <key>CFBundleIdentifier</key>
@@ -15,7 +15,7 @@
     <key>CFBundleInfoDictionaryVersion</key>
     <string>6.0</string>
     <key>CFBundleName</key>
-    <string>primax_lyalaty_program</string>
+    <string>Primax</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
@@ -45,6 +45,11 @@
     <array>
        <string>processing</string>
        <string>fetch</string>
+    </array>
+    <key>BGTaskSchedulerPermittedIdentifiers</key>
+    <array>
+       <string>com.primaxsolarenergy.primax.refresh</string>
+       <string>com.primaxsolarenergy.primax.processing</string>
     </array>
     <key>UISupportsDocumentBrowser</key>
     <true/>
