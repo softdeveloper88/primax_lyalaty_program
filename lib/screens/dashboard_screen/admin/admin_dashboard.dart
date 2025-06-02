@@ -8,7 +8,7 @@ import 'package:primax_lyalaty_program/screens/dashboard_screen/admin/orders_scr
 import 'package:primax_lyalaty_program/screens/dashboard_screen/admin/products_screen/product_screen.dart';
 import 'package:primax_lyalaty_program/screens/dashboard_screen/admin/stores_screen/show_stores_screen.dart';
 import 'package:primax_lyalaty_program/screens/dashboard_screen/admin/users/show_users_screen.dart';
-import 'package:primax_lyalaty_program/screens/home_screen/news_event_screen.dart';
+import 'package:primax_lyalaty_program/screens/dashboard_screen/admin/news_event_screen.dart';
 import 'package:primax_lyalaty_program/screens/notification_screen.dart';
 import 'package:primax_lyalaty_program/widgets/comman_back_button.dart';
 
@@ -178,24 +178,11 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     DownloadListScreen().launch(context);
                   }),
                   buildDashboardCard('News & Events', LucideIcons.calendar, Colors.orange,(){
-                    NewsEventScreen(isFromAdmin:true,).launch(context);
+                    AdminNewsEventScreen().launch(context);
 
                   }),
                 ],
               ),
-              // SizedBox(height: 16),
-              // Row(
-              //   children: [
-              //     buildDashboardCard('News', LucideIcons.newspaper, Colors.red,(){
-              //       NewsEventScreen(isFromAdmin:true,).launch(context);
-              //
-              //     }),
-              //     buildDashboardCard('Orders', LucideIcons.shoppingBag, Colors.blue,(){
-              //       ShowOrdersScreen().launch(context);
-              //
-              //     }),
-              //   ],
-              // ),
               SizedBox(height: 16),
               Row(
                 children: [

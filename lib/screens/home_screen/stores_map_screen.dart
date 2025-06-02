@@ -26,12 +26,13 @@ class _StoresMapScreenState extends State<StoresMapScreen> {
   String searchQuery = "";
   List<Map<String, dynamic>> stores = [];
   Set<Marker> markers = {};
+  bool _hasUserLocation = false;
 
   @override
   void initState() {
     super.initState();
-    _fetchStores(); // Fetch stores when location is available
-    _getCurrentLocation();
+    _fetchStores(); // Fetch stores immediately - app works without location
+    _getCurrentLocation(); // Try to get location but don't block functionality
   }
 
   // Request location permission and get current location
@@ -41,44 +42,63 @@ class _StoresMapScreenState extends State<StoresMapScreen> {
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
       if (permission == LocationPermission.denied) {
-        print("Location permission denied");
+        print("Location permission denied. Using default location.");
+        _useDefaultLocation();
         return;
       }
     }
 
     if (permission == LocationPermission.deniedForever) {
-      print("Location permission permanently denied. Open settings.");
-      await openAppSettings();
+      print("Location permission permanently denied. Using default location.");
+      _useDefaultLocation();
       return;
     }
 
-    Position position = await Geolocator.getCurrentPosition(
-      desiredAccuracy: LocationAccuracy.high,
-    );
+    try {
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
 
+      setState(() {
+        _initialPosition = LatLng(position.latitude, position.longitude);
+        _hasUserLocation = true;
+      });
+
+      // BitmapDescriptor markMyIcon = await _createCustomMarkerIcon();
+      final Uint8List markerIcon = await getBytesFromAsset('assets/icons/ic_mark_location.png',350);
+
+      markers.add(
+        Marker(
+          icon:  BitmapDescriptor.fromBytes(markerIcon),
+          markerId: MarkerId('My Location'),
+          position:
+              LatLng(_initialPosition.latitude, _initialPosition.longitude),
+          infoWindow: InfoWindow(title: 'My location', snippet: ''),
+        ),
+      );
+
+      mapController?.animateCamera(
+        CameraUpdate.newLatLng(_initialPosition),
+      );
+      setState(() {});
+    } catch (e) {
+      print("Error getting location: $e. Using default location.");
+      _useDefaultLocation();
+    }
+    
+    _fetchStores(); // Fetch stores regardless of location status
+  }
+
+  // Use default location when user location is unavailable
+  void _useDefaultLocation() {
     setState(() {
-      _initialPosition = LatLng(position.latitude, position.longitude);
+      _initialPosition = LatLng(37.7749, -122.4194); // Default SF location
     });
-
-    // BitmapDescriptor markMyIcon = await _createCustomMarkerIcon();
-    final Uint8List markerIcon = await getBytesFromAsset('assets/icons/ic_mark_location.png',350);
-
-    markers.add(
-      Marker(
-        icon:  BitmapDescriptor.fromBytes(markerIcon),
-        markerId: MarkerId('My Location'),
-        position:
-            LatLng(_initialPosition.longitude, _initialPosition.longitude),
-        infoWindow: InfoWindow(title: 'My location', snippet: ''),
-      ),
-    );
-
+    
     mapController?.animateCamera(
       CameraUpdate.newLatLng(_initialPosition),
     );
     setState(() {});
-    _fetchStores(); // Fetch stores when location is available
-
   }
 
   // Fetch stores from Firebase Firestore with filtering
@@ -332,11 +352,12 @@ class _StoresMapScreenState extends State<StoresMapScreen> {
                                                 TextStyle(color: Colors.grey),
                                             overflow: TextOverflow.ellipsis,
                                           ),
-                                          Text(
-                                              '${calculateDistanceFromLatLng(_initialPosition.latitude, _initialPosition.longitude, stores[index]['latitude'], stores[index]['longitude']).toStringAsFixed(2)}km',
-                                              style: TextStyle(
-                                                  fontSize: 16,
-                                                  fontWeight: FontWeight.w600)),
+                                          if (_hasUserLocation)
+                                            Text(
+                                                '${calculateDistanceFromLatLng(_initialPosition.latitude, _initialPosition.longitude, stores[index]['latitude'], stores[index]['longitude']).toStringAsFixed(2)}km',
+                                                style: TextStyle(
+                                                    fontSize: 16,
+                                                    fontWeight: FontWeight.w600)),
                                         ],
                                       ),
                                       trailing: Container(

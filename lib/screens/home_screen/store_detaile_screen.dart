@@ -35,46 +35,65 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> {
     _getCurrentLocation();
   }
 
-  // Request location permission and get current location
+  // Request location permission and get current location (optional)
   Future<void> _getCurrentLocation() async {
     LocationPermission permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
       if (permission == LocationPermission.denied) {
-        print("Location permission denied");
+        print("Location permission denied. Using default location.");
+        _useDefaultLocation();
         return;
       }
     }
 
     if (permission == LocationPermission.deniedForever) {
-      print("Location permission permanently denied. Open settings.");
-      await openAppSettings();
+      print("Location permission permanently denied. Using default location.");
+      _useDefaultLocation();
       return;
     }
-    Position position = await Geolocator.getCurrentPosition(
-      desiredAccuracy: LocationAccuracy.high,
-    );
-    setState(() {
-      _initialPosition = LatLng(position.latitude, position.longitude);
-    });
+    
+    try {
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+      setState(() {
+        _initialPosition = LatLng(position.latitude, position.longitude);
+      });
 
-    final Uint8List markerIcon =
-        await getBytesFromAsset('assets/icons/ic_mark_location.png', 350);
-    markers.add(
-      Marker(
-        icon: BitmapDescriptor.fromBytes(markerIcon),
-        markerId: MarkerId('My Location'),
-        position:
-            LatLng(_initialPosition.longitude, _initialPosition.longitude),
-        infoWindow: InfoWindow(title: 'My location', snippet: ''),
-      ),
-    );
+      final Uint8List markerIcon =
+          await getBytesFromAsset('assets/icons/ic_mark_location.png', 350);
+      markers.add(
+        Marker(
+          icon: BitmapDescriptor.fromBytes(markerIcon),
+          markerId: MarkerId('My Location'),
+          position:
+              LatLng(_initialPosition.latitude, _initialPosition.longitude),
+          infoWindow: InfoWindow(title: 'My location', snippet: ''),
+        ),
+      );
+      mapController?.animateCamera(
+        CameraUpdate.newLatLng(_initialPosition),
+      );
+      setState(() {});
+    } catch (e) {
+      print("Error getting location: $e. Using default location.");
+      _useDefaultLocation();
+    }
+    
+    _updateMarkers(); // Always update markers regardless of location status
+  }
+
+  // Use default location when user location is unavailable
+  void _useDefaultLocation() {
+    setState(() {
+      _initialPosition = LatLng(37.7749, -122.4194); // Default SF location
+    });
+    
     mapController?.animateCamera(
       CameraUpdate.newLatLng(_initialPosition),
     );
     setState(() {});
-    _updateMarkers();
-    // _fetchStores(); // Fetch widget?.stores when location is available
   }
 
   // Fetch widget?.stores from Firebase Firestore with filtering

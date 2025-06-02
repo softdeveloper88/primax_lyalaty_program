@@ -78,25 +78,61 @@ class _AddNewAddressState extends State<AddNewAddress> {
     }
   }
 
-  /// Get the user's current location
+  /// Get the user's current location (optional)
   Future<void> _determinePosition() async {
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) return;
+    if (!serviceEnabled) {
+      _useDefaultLocation();
+      return;
+    }
 
     LocationPermission permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.deniedForever) return;
+      if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
+        _useDefaultLocation();
+        return;
+      }
     }
 
-    Position position = await Geolocator.getCurrentPosition();
-    LatLng newPosition = LatLng(position.latitude, position.longitude);
+    try {
+      Position position = await Geolocator.getCurrentPosition();
+      LatLng newPosition = LatLng(position.latitude, position.longitude);
 
+      setState(() {
+        _currentLocation = newPosition;
+        _marker = Marker(
+          markerId: const MarkerId("currentLocation"),
+          position: newPosition,
+          draggable: true,
+          onDragEnd: (newPos) {
+            _updateAddressFromCoordinates(newPos);
+          },
+        );
+      });
+
+      _updateAddressFromCoordinates(newPosition);
+
+      if (_mapController != null) {
+        _mapController!.animateCamera(
+          CameraUpdate.newLatLng(newPosition),
+        );
+      }
+    } catch (e) {
+      print("Error getting location: $e. Using default location.");
+      _useDefaultLocation();
+    }
+  }
+
+  /// Use default location when user location is unavailable
+  void _useDefaultLocation() {
+    LatLng defaultPosition = LatLng(37.7749, -122.4194); // Default SF location
+    
     setState(() {
-      _currentLocation = newPosition;
+      _currentLocation = defaultPosition;
       _marker = Marker(
         markerId: const MarkerId("currentLocation"),
-        position: newPosition,
+        position: defaultPosition,
         draggable: true,
         onDragEnd: (newPos) {
           _updateAddressFromCoordinates(newPos);
@@ -104,11 +140,9 @@ class _AddNewAddressState extends State<AddNewAddress> {
       );
     });
 
-    _updateAddressFromCoordinates(newPosition);
-
     if (_mapController != null) {
       _mapController!.animateCamera(
-        CameraUpdate.newLatLng(newPosition),
+        CameraUpdate.newLatLng(defaultPosition),
       );
     }
   }
@@ -143,7 +177,7 @@ class _AddNewAddressState extends State<AddNewAddress> {
         _apartmentController.text.isEmpty ||
         _currentLocation == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please fill all fields and allow location")),
+        const SnackBar(content: Text("Please fill all fields and set location on map")),
       );
       return;
     }

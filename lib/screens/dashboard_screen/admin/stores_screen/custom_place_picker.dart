@@ -21,23 +21,43 @@ class _CustomPlacePickerState extends State<CustomPlacePicker> {
     _getCurrentLocation();
   }
 
-  /// Get Current Location
+  /// Get Current Location (optional)
   Future<void> _getCurrentLocation() async {
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) return;
+    if (!serviceEnabled) {
+      _useDefaultLocation();
+      return;
+    }
 
     LocationPermission permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.deniedForever) return;
+      if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
+        _useDefaultLocation();
+        return;
+      }
     }
 
-    Position position = await Geolocator.getCurrentPosition();
+    try {
+      Position position = await Geolocator.getCurrentPosition();
+      setState(() {
+        _selectedLocation = LatLng(position.latitude, position.longitude);
+      });
+      _mapController?.animateCamera(CameraUpdate.newLatLng(_selectedLocation));
+      _getAddressFromLatLng(_selectedLocation);
+    } catch (e) {
+      print("Error getting location: $e. Using default location.");
+      _useDefaultLocation();
+    }
+  }
+
+  /// Use default location when user location is unavailable
+  void _useDefaultLocation() {
     setState(() {
-      _selectedLocation = LatLng(position.latitude, position.longitude);
+      _selectedLocation = LatLng(37.7749, -122.4194); // Default SF location
+      _selectedAddress = "Default location - move marker to select";
     });
     _mapController?.animateCamera(CameraUpdate.newLatLng(_selectedLocation));
-    _getAddressFromLatLng(_selectedLocation);
   }
 
   /// Reverse Geocoding to Get Address

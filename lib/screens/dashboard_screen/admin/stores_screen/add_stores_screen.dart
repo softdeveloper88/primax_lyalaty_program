@@ -50,24 +50,31 @@ class _AddStoresScreenState extends State<AddStoresScreen> {
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
       if (permission == LocationPermission.denied) {
-        print("Location permission denied");
+        print("Location permission denied. Using default location.");
+        _useDefaultLocation();
         return;
       }
     }
 
     if (permission == LocationPermission.deniedForever) {
-      print("Location permission permanently denied. Open settings.");
-      await openAppSettings();
+      print("Location permission permanently denied. Using default location.");
+      _useDefaultLocation();
       return;
     }
 
-    Position position = await Geolocator.getCurrentPosition(
-      desiredAccuracy: LocationAccuracy.high,
-    );
+    try {
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
 
-    setState(() {
-      _initialPosition = LatLng(position.latitude, position.longitude);
-    });
+      setState(() {
+        _initialPosition = LatLng(position.latitude, position.longitude);
+      });
+    } catch (e) {
+      print("Error getting location: $e. Using default location.");
+      _useDefaultLocation();
+      return;
+    }
     var markMyIcon = await BitmapDescriptor.fromAssetImage(
         ImageConfiguration(devicePixelRatio: 2.5),
         'assets/icons/ic_mark_pin.png');
@@ -86,6 +93,29 @@ class _AddStoresScreenState extends State<AddStoresScreen> {
     setState(() {});
 
     // _fetchStores(); // Fetch widget?.stores when location is available
+  }
+
+  // Use default location when user location is unavailable
+  void _useDefaultLocation() async {
+    setState(() {
+      _initialPosition = LatLng(37.7749, -122.4194); // Default SF location
+    });
+    
+    var markMyIcon = await BitmapDescriptor.fromAssetImage(
+        ImageConfiguration(devicePixelRatio: 2.5),
+        'assets/icons/ic_mark_pin.png');
+    markers.add(
+      Marker(
+        icon: markMyIcon,
+        markerId: MarkerId('Default Location'),
+        position: _initialPosition,
+        infoWindow: InfoWindow(title: 'Default location', snippet: ''),
+      ),
+    );
+    _mapController?.animateCamera(
+      CameraUpdate.newLatLng(_initialPosition),
+    );
+    setState(() {});
   }
 
   @override

@@ -287,17 +287,48 @@ class _DownloadCenterScreenState extends State<DownloadCenterScreen> {
       final iosInfo = await DeviceInfoPlugin().iosInfo;
       final iosVersion = iosInfo.systemVersion;
       
-      // Get the app's document directory (works on all iOS versions)
-      final documentDirectory = await getApplicationDocumentsDirectory();
+      // For iOS 13+, save to a location accessible by Files app
+      Directory saveDirectory;
+      double? majorVersion = double.tryParse(iosVersion?.split('.')[0] ?? "0");
       
-      // Ensure the directory exists
-      if (!await documentDirectory.exists()) {
-        await documentDirectory.create(recursive: true);
+      if (majorVersion != null && majorVersion >= 13.0) {
+        // For iOS 13+, create a folder in the app's documents directory that's shared with Files app
+        final documentDirectory = await getApplicationDocumentsDirectory();
+        saveDirectory = Directory("${documentDirectory.path}/Downloads");
+        
+        // Ensure the Downloads directory exists
+        if (!await saveDirectory.exists()) {
+          await saveDirectory.create(recursive: true);
+        }
+      } else {
+        // For older iOS versions, use standard documents directory
+        saveDirectory = await getApplicationDocumentsDirectory();
       }
       
-      // Create a unique path with timestamp to avoid conflicts
-      final timestamp = DateTime.now().millisecondsSinceEpoch;
-      final savePath = "${documentDirectory.path}/${timestamp}_$fileName";
+      // Handle duplicate files by checking if file already exists
+      String finalFileName = fileName;
+      String baseName;
+      String extension;
+      int counter = 1;
+      
+      // Handle filename with or without extension
+      if (fileName.contains('.')) {
+        baseName = fileName.substring(0, fileName.lastIndexOf('.'));
+        extension = fileName.substring(fileName.lastIndexOf('.'));
+      } else {
+        baseName = fileName;
+        extension = '';
+      }
+      
+      // Check if file exists and create a unique name if needed
+      File tempFile = File("${saveDirectory.path}/$finalFileName");
+      while (await tempFile.exists()) {
+        finalFileName = "${baseName}_$counter$extension";
+        tempFile = File("${saveDirectory.path}/$finalFileName");
+        counter++;
+      }
+      
+      final savePath = "${saveDirectory.path}/$finalFileName";
 
       // Configure Dio options for reliable downloading
       final dio = Dio();
@@ -340,13 +371,11 @@ class _DownloadCenterScreenState extends State<DownloadCenterScreen> {
           });
         }
         
-        // For iOS 13+ (more restrictions), remind users where to find files
-        if (iosVersion != null) {
-          // Parse major version as double
-          double? majorVersion = double.tryParse(iosVersion.split('.')[0]);
-          if (majorVersion != null && majorVersion >= 13.0) {
-            _showSnackBar(context, "File downloaded to app documents. Use Files app to access it.");
-          }
+        // Show success message with clear instructions for users
+        if (majorVersion != null && majorVersion >= 13.0) {
+          _showSnackBar(context, "File '$finalFileName' downloaded successfully! Open Files app > On My iPhone/iPad > Primax > Downloads to access it.");
+        } else {
+          _showSnackBar(context, "File '$finalFileName' downloaded successfully!");
         }
       } else {
         throw Exception("Download failed with status: ${response.statusCode}");

@@ -2,26 +2,22 @@ import 'dart:async';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/scheduler.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
-import 'package:lucide_icons/lucide_icons.dart';
 import 'package:nb_utils/nb_utils.dart';
-import 'package:primax_lyalaty_program/screens/dashboard_screen/admin/events/add_news_event.dart';
 import 'package:primax_lyalaty_program/screens/login_screen/login_screen.dart';
 import 'package:primax_lyalaty_program/widgets/media_viewer_widget.dart';
 import '../../core/utils/comman_data.dart';
 import '../../main.dart';
 import '../../widgets/custom_button.dart';
 import '../../core/utils/comman_widget.dart';
-import '../dashboard_screen/admin/events/event_registered_users_screen.dart';
 import '../news_event_details_screen/news_event_details_screen.dart';
 import 'widget/header_widget.dart';
 import 'widget/searchbar_widget.dart';
 
 class NewsEventScreen extends StatefulWidget {
-  NewsEventScreen({this.isFromAdmin=false, super.key});
-  bool? isFromAdmin;
+  const NewsEventScreen({super.key});
+  
   @override
   State<NewsEventScreen> createState() => _NewsEventScreenState();
 }
@@ -34,6 +30,10 @@ class _NewsEventScreenState extends State<NewsEventScreen> with SingleTickerProv
   final ScrollController _scrollController = ScrollController();
   bool isCollapsed = false;
   bool _isUpdating = false;
+  
+  // Store futures to prevent rebuilding
+  late Future<QuerySnapshot> _newsFuture;
+  late Future<QuerySnapshot> _eventsFuture;
 
   // Use AnimationController for smoother transitions
   late AnimationController _animationController;
@@ -53,33 +53,34 @@ class _NewsEventScreenState extends State<NewsEventScreen> with SingleTickerProv
   @override
   void initState() {
     super.initState();
-    if (!(widget.isFromAdmin ?? false)) {
-      _scrollController.addListener(_handleScroll);
+    _scrollController.addListener(_handleScroll);
+    
+    // Initialize futures
+    _loadData();
 
-      // Initialize animation controller
-      _animationController = AnimationController(
-        vsync: this,
-        duration: Duration(milliseconds: 200),
-      );
+    // Initialize animation controller
+    _animationController = AnimationController(
+      vsync: this,
+      duration: Duration(milliseconds: 200),
+    );
 
-      _animation = Tween<double>(begin: 0.0, end: 1.0).animate(
-          CurvedAnimation(parent: _animationController, curve: Curves.easeInOut)
-      );
+    _animation = Tween<double>(begin: 0.0, end: 1.0).animate(
+        CurvedAnimation(parent: _animationController, curve: Curves.easeInOut)
+    );
 
-      // Add listener to animation for rebuilding
-      _animation.addListener(() {
-        if (mounted) setState(() {});
-      });
-    }
+    // Remove animation listener to prevent constant rebuilds
+  }
+  
+  void _loadData() {
+    _newsFuture = FirebaseFirestore.instance.collection('news').get();
+    _eventsFuture = FirebaseFirestore.instance.collection('events').get();
   }
 
   @override
   void dispose() {
     _scrollController.removeListener(_handleScroll);
     _scrollController.dispose();
-    if (!(widget.isFromAdmin ?? false)) {
-      _animationController.dispose();
-    }
+    _animationController.dispose();
     super.dispose();
   }
 
@@ -109,22 +110,13 @@ class _NewsEventScreenState extends State<NewsEventScreen> with SingleTickerProv
 
   @override
   Widget build(BuildContext context) {
-    // Skip animation setup for admin view
-    if (widget.isFromAdmin ?? false) {
-      return _buildAdminView();
-    }
 
     // Header related dimensions
     final headerExpandedHeight = 160.0;
     final headerCollapsedHeight = 60.0;
     final searchBarHeight = 50.0;
 
-    // Calculate current height based on animation
-    final double currentHeaderHeight = headerExpandedHeight - (_animation.value * (headerExpandedHeight - headerCollapsedHeight));
-
-    // Dynamic top padding based on animation
-    final contentTopPadding = headerExpandedHeight + searchBarHeight / 2 + 10 -
-        (_animation.value * (headerExpandedHeight - headerCollapsedHeight));
+    // Dynamic top padding will be calculated in AnimatedBuilder
 
     return Scaffold(
       body: Stack(
@@ -144,46 +136,68 @@ class _NewsEventScreenState extends State<NewsEventScreen> with SingleTickerProv
             top: 0,
             left: 0,
             right: 0,
-            child: Container(
-              height: currentHeaderHeight,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.only(
-                  bottomLeft: Radius.circular(10),
-                  bottomRight: Radius.circular(10),
-                ),
-                gradient: setGradient(),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    SizedBox(height: 60 - (_animation.value * 50)),
-                    Opacity(
-                      opacity: 1.0 - _animation.value,
-                      child: isCollapsed ? SizedBox() : const HeaderWidget(),
+            child: AnimatedBuilder(
+              animation: _animation,
+              builder: (context, child) {
+                final double animatedHeaderHeight = headerExpandedHeight - 
+                    (_animation.value * (headerExpandedHeight - headerCollapsedHeight));
+                return Container(
+                  height: animatedHeaderHeight,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.only(
+                      bottomLeft: Radius.circular(10),
+                      bottomRight: Radius.circular(10),
                     ),
-                  ],
-                ),
-              ),
+                    gradient: setGradient(),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        SizedBox(height: 60 - (_animation.value * 50)),
+                        Opacity(
+                          opacity: 1.0 - _animation.value,
+                          child: isCollapsed ? SizedBox() : const HeaderWidget(),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
             ),
           ),
 
           // Search bar with animation
-          Positioned(
-            top: headerExpandedHeight - searchBarHeight / 2 - (_animation.value * (headerExpandedHeight - headerCollapsedHeight - 10)),
-            left: 16,
-            right: 16,
+          AnimatedBuilder(
+            animation: _animation,
+            builder: (context, child) {
+              return Positioned(
+                top: headerExpandedHeight - searchBarHeight / 2 - 
+                    (_animation.value * (headerExpandedHeight - headerCollapsedHeight - 10)),
+                left: 16,
+                right: 16,
+                child: child!,
+              );
+            },
             child: SearchBarWidget(updateSearch),
           ),
 
           // Main content with unified scrolling
-          Positioned(
-            top: contentTopPadding,
-            left: 0,
-            right: 0,
-            bottom: 0,
+          AnimatedBuilder(
+            animation: _animation,
+            builder: (context, child) {
+              final contentTopPadding = headerExpandedHeight + searchBarHeight / 2 + 10 -
+                  (_animation.value * (headerExpandedHeight - headerCollapsedHeight));
+              return Positioned(
+                top: contentTopPadding,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: child!,
+              );
+            },
             child: CustomScrollView(
               controller: _scrollController,
               physics: const ClampingScrollPhysics(), // Better for preventing over-scroll refreshes
@@ -194,9 +208,13 @@ class _NewsEventScreenState extends State<NewsEventScreen> with SingleTickerProv
                   sliver: SliverToBoxAdapter(
                     child: NewsEventsTabs(
                       callback: (i) {
-                        setState(() {
-                          selectedIndex = i;
-                        });
+                        if (selectedIndex != i) {
+                          setState(() {
+                            selectedIndex = i;
+                            // Reload data when tab changes
+                            _loadData();
+                          });
+                        }
                       },
                       onCategorySelected: (category) {
                         setState(() {
@@ -232,66 +250,10 @@ class _NewsEventScreenState extends State<NewsEventScreen> with SingleTickerProv
     );
   }
 
-  Widget _buildAdminView() {
-    return Scaffold(
-      appBar: AppBar(
-        actions: [
-          IconButton(
-              onPressed: () {
-                AddNewsEvent(isEvent: selectedIndex==1).launch(context);
-              },
-              icon: Icon(Icons.add)
-          )
-        ],
-      ),
-      body: Stack(
-        children: [
-          SizedBox(
-            width: double.infinity,
-            height: double.infinity,
-            child: Image.asset(
-              'assets/images/img_splash.png',
-              fit: BoxFit.cover,
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 20),
-                SearchBarWidget(updateSearch),
-                const SizedBox(height: 20),
-                NewsEventsTabs(
-                  callback: (i) {
-                    setState(() {
-                      selectedIndex = i;
-                    });
-                  },
-                  onCategorySelected: (category) {
-                    setState(() {
-                      if(selectedIndex==0) {
-                        selectedCategory = category;
-                      } else {
-                        selectedCategory='';
-                      }
-                    });
-                  },
-                ),
-                Expanded(child: _buildNewsEventsList()),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _buildNewsEventsList() {
     return FutureBuilder<QuerySnapshot>(
-      future: FirebaseFirestore.instance
-          .collection(selectedIndex == 0 ? 'news' : 'events')
-          .get(),
+      future: selectedIndex == 0 ? _newsFuture : _eventsFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return Center(child: CircularProgressIndicator());
@@ -328,7 +290,6 @@ class _NewsEventScreenState extends State<NewsEventScreen> with SingleTickerProv
           itemBuilder: (context, index) {
             return NewsCard(
               selectedIndex,
-              widget.isFromAdmin??false,
               data[index],
             );
           },
@@ -341,10 +302,9 @@ class _NewsEventScreenState extends State<NewsEventScreen> with SingleTickerProv
 // The rest of the class implementations remain the same
 class NewsCard extends StatefulWidget {
   final int selectedIndex;
-  final bool isFromAdmin;
   final DocumentSnapshot data;
 
-  const NewsCard(this.selectedIndex, this.isFromAdmin,this.data, {super.key});
+  const NewsCard(this.selectedIndex, this.data, {super.key});
 
   @override
   State<StatefulWidget> createState() =>_NewsCardState();
@@ -357,7 +317,7 @@ class _NewsCardState extends State<NewsCard> {
     DocumentSnapshot eventSnapshot = await FirebaseFirestore.instance.collection('events').doc(eventId).get();
 
     List<String> registerUser = List<String>.from(eventSnapshot['register_users'] ?? []);
-    return registerUser.contains(sharedPref.getString('user_id'));
+    return registerUser.contains(sharedPref.getString('user_id') ?? '');
   }
   bool isRegisterUser=false;
   void checkRegistration() async {
@@ -588,7 +548,7 @@ class _NewsCardState extends State<NewsCard> {
                             ),
                           ),
                         ),
-                        if(!widget.isFromAdmin && widget.selectedIndex==1)  Expanded(
+                        if(widget.selectedIndex==1)  Expanded(
                           child: CustomButton(
                             height: 35,
                             onPressed: () {
@@ -608,26 +568,6 @@ class _NewsCardState extends State<NewsCard> {
                       ],
                     ),
                   ),
-                  Visibility(
-                    visible: widget.isFromAdmin,
-                    child: Row(
-                      children: [
-                        IconButton(onPressed: (){
-                          AddNewsEvent(isEvent: widget.selectedIndex==1,id: widget.data.id,).launch(context);
-                        }, icon: Icon(LucideIcons.edit)),
-                        IconButton(onPressed: () async {
-                          await  FirebaseFirestore.instance
-                              .collection(widget.selectedIndex == 0 ? 'news' : 'events').doc(widget.data.id).delete();
-                        }, icon: Icon(Icons.delete,color: Colors.red,)),
-                        Visibility(
-                          visible:  widget.isFromAdmin && widget.selectedIndex==1,
-                          child: TextButton(onPressed: (){
-                            EventRegisteredUsersScreen(eventId: widget.data.id).launch(context,pageRouteAnimation: PageRouteAnimation.Slide);
-                          }, child: Text("View Register User",style: TextStyle(color: Colors.black,fontWeight: FontWeight.w500),)),
-                        )
-                      ],
-                    ),
-                  )
                 ],
               ),
             ),
