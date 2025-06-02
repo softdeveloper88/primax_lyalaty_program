@@ -25,7 +25,6 @@ class _AddNewsEventState extends State<AddNewsEvent> {
   final TextEditingController _fromTimeController = TextEditingController();
   final TextEditingController _toTimeController = TextEditingController();
   final TextEditingController _titleController = TextEditingController();
-  final TextEditingController _urlController = TextEditingController();
 
   bool _isUploading = false;
   bool _isUpdating = false;
@@ -67,7 +66,6 @@ class _AddNewsEventState extends State<AddNewsEvent> {
           _fromTimeController.text = doc['time'].split(' - ')[0];;
           _toTimeController.text = doc['time'].split(' - ')[1];;
           _titleController.text = doc['title'];
-          _urlController.text = doc['url'] ?? '';
           registerUser= doc['register_users'] as List;
           List<String> images = List<String>.from(doc['images'] ?? []);
           _imageControllers = images.map((url) {
@@ -102,7 +100,6 @@ class _AddNewsEventState extends State<AddNewsEvent> {
         'register_users': registerUser,
         'time': '${_fromTimeController.text} - ${_toTimeController.text}',
         'title': _titleController.text,
-        'url': _urlController.text,
         'images': images,
       };
 
@@ -250,12 +247,6 @@ class _AddNewsEventState extends State<AddNewsEvent> {
                   validator: (value) =>
                       value!.isEmpty ? 'Title is required' : null,
                 ),
-                if (!widget.isEvent)
-                  CustomTextFormField(
-                    controller: _urlController,
-                    hintText: 'External URL (optional for Market News)',
-                    textInputType: TextInputType.url,
-                  ),
                 ..._imageControllers.asMap().entries.map((entry) {
                   int index = entry.key;
                   return Row(
