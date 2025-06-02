@@ -9,6 +9,7 @@ import 'package:primax_lyalaty_program/main.dart';
 import 'package:primax_lyalaty_program/screens/login_screen/login_screen.dart';
 import 'package:primax_lyalaty_program/widgets/custom_button.dart';
 import 'package:primax_lyalaty_program/widgets/media_viewer_widget.dart';
+import '../home_screen/web_view_screen.dart';
 
 class NewsEventDetailsScreen extends StatefulWidget {
   NewsEventDetailsScreen(this.data,this.isEvent, {super.key});
@@ -299,7 +300,24 @@ class _NewsEventDetailsScreenState extends State<NewsEventDetailsScreen> {
                               },
                           width:400,
                           ),
-                       )
+                       ),
+                       // Add button to open URL for news items
+                       if (!widget.isEvent && widget.data['url'] != null && widget.data['url'].toString().isNotEmpty)
+                         Column(
+                           children: [
+                             const SizedBox(height: 16),
+                             CustomButton(
+                               text: "Read Full Article",
+                               onPressed: () {
+                                 WebViewScreen(
+                                   url: widget.data['url'],
+                                   title: title,
+                                 ).launch(context, pageRouteAnimation: PageRouteAnimation.Slide);
+                               },
+                               width: 400,
+                             ),
+                           ],
+                         ),
                       ],
                     ),
                   ),

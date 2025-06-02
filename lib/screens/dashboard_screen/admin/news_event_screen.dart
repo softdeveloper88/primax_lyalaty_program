@@ -13,6 +13,7 @@ import '../../../core/utils/comman_widget.dart';
 import 'events/event_registered_users_screen.dart';
 import '../../news_event_details_screen/news_event_details_screen.dart';
 import '../../home_screen/widget/searchbar_widget.dart';
+import '../../home_screen/web_view_screen.dart';
 
 class AdminNewsEventScreen extends StatefulWidget {
   const AdminNewsEventScreen({super.key});
@@ -184,8 +185,18 @@ class _AdminNewsCardState extends State<AdminNewsCard> {
 
     return InkWell(
       onTap: () {
-        NewsEventDetailsScreen(widget.data, widget.selectedIndex == 1)
-            .launch(context, pageRouteAnimation: PageRouteAnimation.Slide);
+        // Check if this is a news item with a URL
+        if (widget.selectedIndex == 0 && widget.data['images'] != null && widget.data['images'].toString().isNotEmpty) {
+          // Open URL in WebView
+          WebViewScreen(
+            url: widget.data['images'],
+            title: title,
+          ).launch(context, pageRouteAnimation: PageRouteAnimation.Slide);
+        } else {
+          // Normal behavior - open details screen
+          NewsEventDetailsScreen(widget.data, widget.selectedIndex == 1)
+              .launch(context, pageRouteAnimation: PageRouteAnimation.Slide);
+        }
       },
       child: Container(
         decoration: BoxDecoration(
@@ -262,9 +273,24 @@ class _AdminNewsCardState extends State<AdminNewsCard> {
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 4),
-                  HtmlWidget(
-                    displayText,
-                    textStyle: TextStyle(color: Colors.black54),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: HtmlWidget(
+                          displayText,
+                          textStyle: TextStyle(color: Colors.black54),
+                        ),
+                      ),
+                      if (widget.selectedIndex == 0 && widget.data['images'] != null && widget.data['images'].toString().isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(left: 8.0),
+                          child: Icon(
+                            Icons.open_in_new,
+                            color: Colors.blue,
+                            size: 20,
+                          ),
+                        ),
+                    ],
                   ),
                   const SizedBox(height: 8),
                   if (widget.selectedIndex == 1)
