@@ -302,22 +302,22 @@ class _NewsEventDetailsScreenState extends State<NewsEventDetailsScreen> {
                           ),
                        ),
                        // Add button to open URL for news items
-                       if (!widget.isEvent && widget.data['url'] != null && widget.data['url'].toString().isNotEmpty)
-                         Column(
-                           children: [
-                             const SizedBox(height: 16),
-                             CustomButton(
-                               text: "Read Full Article",
-                               onPressed: () {
-                                 WebViewScreen(
-                                   url: widget.data['url'],
-                                   title: title,
-                                 ).launch(context, pageRouteAnimation: PageRouteAnimation.Slide);
-                               },
-                               width: 400,
-                             ),
-                           ],
-                         ),
+                       // if (!widget.isEvent && widget.data['images'] != null && widget.data['images'].toString().isNotEmpty)
+                       //   Column(
+                       //     children: [
+                       //       const SizedBox(height: 16),
+                       //       CustomButton(
+                       //         text: "Read Full Article",
+                       //         onPressed: () {
+                       //           WebViewScreen(
+                       //             url: widget.data['images'],
+                       //             title: title,
+                       //           ).launch(context, pageRouteAnimation: PageRouteAnimation.Slide);
+                       //         },
+                       //         width: 400,
+                       //       ),
+                       //     ],
+                       //   ),
                       ],
                     ),
                   ),

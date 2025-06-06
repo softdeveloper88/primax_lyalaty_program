@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:flutter/services.dart';
 
@@ -43,6 +44,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
     _webViewController = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setBackgroundColor(Colors.white)
+      ..setUserAgent('Mozilla/5.0 (Linux; Android 10; SM-G975F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.120 Mobile Safari/537.36')
       ..setNavigationDelegate(
         NavigationDelegate(
           onProgress: (int progress) {
@@ -69,6 +71,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
             });
           },
           onNavigationRequest: (NavigationRequest request) {
+            // Allow all navigation for PDF viewing
             return NavigationDecision.navigate;
           },
         ),
@@ -104,6 +107,15 @@ class _WebViewScreenState extends State<WebViewScreen> {
           backgroundColor: Colors.white,
           elevation: 0,
           actions: [
+            IconButton(
+              icon: Icon(Icons.share, color: Colors.black),
+              onPressed: () {
+                Share.share(
+                  widget.url,
+                  subject: widget.title,
+                );
+              },
+            ),
             IconButton(
               icon: Icon(Icons.refresh, color: Colors.black),
               onPressed: () {

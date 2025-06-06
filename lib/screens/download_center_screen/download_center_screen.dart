@@ -12,6 +12,9 @@ import 'package:nb_utils/nb_utils.dart';
 import 'package:open_file/open_file.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:share_plus/share_plus.dart';
+import '../home_screen/web_view_screen.dart';
 
 // Data class to track download status for each item
 class DownloadItem {
@@ -568,6 +571,91 @@ class _DownloadCenterScreenState extends State<DownloadCenterScreen> {
     );
   }
 
+  void _showPdfViewingOptions(BuildContext context, String fileUrl, String fileName) {
+    showModalBottomSheet(
+      context: context,
+      builder: (BuildContext context) {
+        return Container(
+          padding: EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Choose an option',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 20),
+              
+              // View in app WebView option
+              ListTile(
+                leading: Icon(Icons.picture_as_pdf, color: Colors.green),
+                title: Text('View in App'),
+                subtitle: Text('Opens PDF viewer inside the app'),
+                onTap: () {
+                  Navigator.pop(context);
+                  // Use Google Docs viewer for in-app viewing
+                  String googleViewerUrl = 'https://docs.google.com/gview?embedded=true&url=${Uri.encodeComponent(fileUrl)}';
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => WebViewScreen(
+                        url: googleViewerUrl,
+                        title: fileName,
+                      ),
+                    ),
+                  );
+                },
+              ),
+              
+              // Open in device browser option
+              ListTile(
+                leading: Icon(Icons.open_in_browser, color: Colors.blue),
+                title: Text('Open in Browser'),
+                subtitle: Text('Opens PDF in device\'s default browser'),
+                onTap: () async {
+                  Navigator.pop(context);
+                  if (await canLaunchUrl(Uri.parse(fileUrl))) {
+                    await launchUrl(
+                      Uri.parse(fileUrl),
+                      mode: LaunchMode.externalApplication,
+                    );
+                  } else {
+                    _showSnackBar(context, 'Could not open the link');
+                  }
+                },
+              ),
+              
+              // Download option
+              ListTile(
+                leading: Icon(Icons.download, color: Colors.orange),
+                title: Text('Download PDF'),
+                subtitle: Text('Download to view offline'),
+                onTap: () {
+                  Navigator.pop(context);
+                  downloadFile(fileUrl, fileName, context);
+                },
+              ),
+              
+              // Share option
+              ListTile(
+                leading: Icon(Icons.share, color: Colors.purple),
+                title: Text('Share'),
+                subtitle: Text('Share link via WhatsApp, etc.'),
+                onTap: () {
+                  Navigator.pop(context);
+                  Share.share(
+                    fileUrl,
+                    subject: fileName,
+                  );
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -703,8 +791,38 @@ class _DownloadCenterScreenState extends State<DownloadCenterScreen> {
                   itemBuilder: (context, index) {
                     var data = documents[index].data() as Map<String, dynamic>;
                     return GestureDetector(
-                      // Make entire item tappable to view file
-                      onTap: () => _viewOrDownloadFile(data['file_url'], data['file_name'], context),
+                      // Make entire item tappable to open in webview
+                      onTap: () {
+                        // Navigate to WebViewScreen with PDF handling
+                        String fileUrl = data['file_url'];
+                        String fileName = data['file_name'];
+                        
+                        // Check if it's a PDF file and use PDF viewer
+                        String finalUrl;
+                        if (fileUrl.toLowerCase().contains('.pdf') || 
+                            fileName.toLowerCase().contains('.pdf')) {
+                          // Use multiple PDF viewer options as fallback
+                          // Primary: Google Docs viewer
+                          finalUrl = 'https://docs.google.com/viewer?url=${Uri.encodeComponent(fileUrl)}&embedded=true';
+                          
+                          // Show options dialog for PDF viewing
+                          _showPdfViewingOptions(context, fileUrl, fileName);
+                          return;
+                        } else {
+                          // Use direct URL for other file types
+                          finalUrl = fileUrl;
+                        }
+                        
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => WebViewScreen(
+                              url: finalUrl,
+                              title: fileName,
+                            ),
+                          ),
+                        );
+                      },
                       child: Stack(
                         children: [
                           ClipRRect(
@@ -821,6 +939,7 @@ class _DownloadCenterScreenState extends State<DownloadCenterScreen> {
                                               openDownloadedFile(downloadItem!.filePath!);
                                             }
                                           },
+                                          behavior: HitTestBehavior.opaque,
                                           child: Container(
                                             padding: const EdgeInsets.symmetric(
                                                 vertical: 10, horizontal: 15),
@@ -864,6 +983,7 @@ class _DownloadCenterScreenState extends State<DownloadCenterScreen> {
                                         ),
                                         GestureDetector(
                                           onTap: () => downloadFile(data['file_url'], fileName, context),
+                                          behavior: HitTestBehavior.opaque,
                                           child: Text(
                                             "RETRY",
                                             style: TextStyle(
@@ -903,7 +1023,11 @@ class _DownloadCenterScreenState extends State<DownloadCenterScreen> {
                                       ),
                                       // Download button
                                       GestureDetector(
-                                        onTap: () => downloadFile(data['file_url'], fileName, context),
+                                        onTap: () {
+                                          // Prevent parent GestureDetector from triggering
+                                          downloadFile(data['file_url'], fileName, context);
+                                        },
+                                        behavior: HitTestBehavior.opaque,
                                         child: Container(
                                           padding: const EdgeInsets.symmetric(
                                               vertical: 10, horizontal: 12),

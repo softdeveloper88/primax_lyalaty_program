@@ -4,6 +4,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
 import 'package:nb_utils/nb_utils.dart';
 import 'package:primax_lyalaty_program/screens/login_screen/login_screen.dart';
 import 'package:primax_lyalaty_program/widgets/media_viewer_widget.dart';
@@ -221,6 +224,8 @@ class _NewsEventScreenState extends State<NewsEventScreen> with SingleTickerProv
                         setState(() {
                           if(selectedIndex==0) {
                             selectedCategory = category;
+                            // Reload data when category changes
+                            _loadData();
                           } else {
                             selectedCategory='';
                           }
@@ -386,17 +391,17 @@ class _NewsCardState extends State<NewsCard> {
     }
     return InkWell(
       onTap: (){
-        // Check if this is a news item with a URL
-        if (widget.selectedIndex == 0 && widget.data['images'] != null && widget.data['images'].toString().isNotEmpty) {
-          // Open URL in WebView
-          WebViewScreen(
-            url: widget.data['images'],
-            title: title,
-          ).launch(context, pageRouteAnimation: PageRouteAnimation.Slide);
-        } else {
+        // // Check if this is a news item with a URL
+        // if (widget.selectedIndex == 0 && widget.data['images'] != null && widget.data['images'].toString().isNotEmpty) {
+        //   // Open URL in WebView
+        //   WebViewScreen(
+        //     url: widget.data['images'],
+        //     title: title,
+        //   ).launch(context, pageRouteAnimation: PageRouteAnimation.Slide);
+        // } else {
           // Normal behavior - open details screen
           NewsEventDetailsScreen(widget.data,widget.selectedIndex==1).launch(context,pageRouteAnimation: PageRouteAnimation.Slide);
-        }
+        // }
       },
       child: Container(
         decoration: BoxDecoration(
@@ -705,7 +710,7 @@ class _NewsEventsTabsState extends State<NewsEventsTabs> {
       selected: selectedCategory == category,
       showCheckmark: false,
       onSelected: (selected) {
-        // Only update if the selection actually changes
+        // Always call the callback even when deselecting (selected becomes false)
         final String newCategory = selected ? category : "";
         if (selectedCategory != newCategory) {
           setState(() {
