@@ -574,83 +574,127 @@ class _DownloadCenterScreenState extends State<DownloadCenterScreen> {
   void _showPdfViewingOptions(BuildContext context, String fileUrl, String fileName) {
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
       builder: (BuildContext context) {
-        return Container(
-          padding: EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Choose an option',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        return DraggableScrollableSheet(
+          initialChildSize: 0.4,
+          minChildSize: 0.3,
+          maxChildSize: 0.8,
+          builder: (context, scrollController) {
+            return Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(20),
+                  topRight: Radius.circular(20),
+                ),
               ),
-              SizedBox(height: 20),
-              
-              // View in app WebView option
-              ListTile(
-                leading: Icon(Icons.picture_as_pdf, color: Colors.green),
-                title: Text('View in App'),
-                subtitle: Text('Opens PDF viewer inside the app'),
-                onTap: () {
-                  Navigator.pop(context);
-                  // Use Google Docs viewer for in-app viewing
-                  String googleViewerUrl = 'https://docs.google.com/gview?embedded=true&url=${Uri.encodeComponent(fileUrl)}';
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => WebViewScreen(
-                        url: googleViewerUrl,
-                        title: fileName,
+              child: Column(
+                children: [
+                  // Handle bar for dragging
+                  Container(
+                    width: 40,
+                    height: 4,
+                    margin: EdgeInsets.symmetric(vertical: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      controller: scrollController,
+                      padding: EdgeInsets.symmetric(horizontal: 20),
+                      child: Column(
+                        children: [
+                          Text(
+                            'Choose an option',
+                            style: TextStyle(
+                                fontSize: 18, fontWeight: FontWeight.bold),
+                          ),
+                          SizedBox(height: 20),
+
+                          // View in app WebView option
+                          ListTile(
+                            leading: Icon(
+                                Icons.picture_as_pdf, color: Colors.green),
+                            title: Text('View in App'),
+                            subtitle: Text('Opens PDF viewer inside the app'),
+                            onTap: () {
+                              Navigator.pop(context);
+                              // Use Google Docs viewer for in-app viewing
+                              String googleViewerUrl = 'https://docs.google.com/gview?embedded=true&url=${Uri
+                                  .encodeComponent(fileUrl)}';
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      WebViewScreen(
+                                        url: googleViewerUrl,
+                                        title: fileName,
+                                      ),
+                                ),
+                              );
+                            },
+                          ),
+
+                          // Open in device browser option
+                          ListTile(
+                            leading: Icon(
+                                Icons.open_in_browser, color: Colors.blue),
+                            title: Text('Open in Browser'),
+                            subtitle: Text(
+                                'Opens PDF in device\'s default browser'),
+                            onTap: () async {
+                              Navigator.pop(context);
+                              if (await canLaunchUrl(Uri.parse(fileUrl))) {
+                                await launchUrl(
+                                  Uri.parse(fileUrl),
+                                  mode: LaunchMode.externalApplication,
+                                );
+                              } else {
+                                _showSnackBar(
+                                    context, 'Could not open the link');
+                              }
+                            },
+                          ),
+
+                          // Download option
+                          ListTile(
+                            leading: Icon(Icons.download, color: Colors.orange),
+                            title: Text('Download PDF'),
+                            subtitle: Text('Download to view offline'),
+                            onTap: () {
+                              Navigator.pop(context);
+                              downloadFile(fileUrl, fileName, context);
+                            },
+                          ),
+
+                          // Share option
+                          ListTile(
+                            leading: Icon(Icons.share, color: Colors.purple),
+                            title: Text('Share'),
+                            subtitle: Text('Share link via WhatsApp, etc.'),
+                            onTap: () {
+                              Navigator.pop(context);
+                              Share.share(
+                                fileUrl,
+                                subject: fileName,
+                              );
+                            },
+                          ),
+
+                          // Add some bottom padding for better scrolling experience
+                          SizedBox(height: 20),
+                        ],
                       ),
                     ),
-                  );
-                },
+                  ),
+                ],
               ),
-              
-              // Open in device browser option
-              ListTile(
-                leading: Icon(Icons.open_in_browser, color: Colors.blue),
-                title: Text('Open in Browser'),
-                subtitle: Text('Opens PDF in device\'s default browser'),
-                onTap: () async {
-                  Navigator.pop(context);
-                  if (await canLaunchUrl(Uri.parse(fileUrl))) {
-                    await launchUrl(
-                      Uri.parse(fileUrl),
-                      mode: LaunchMode.externalApplication,
-                    );
-                  } else {
-                    _showSnackBar(context, 'Could not open the link');
-                  }
-                },
-              ),
-              
-              // Download option
-              ListTile(
-                leading: Icon(Icons.download, color: Colors.orange),
-                title: Text('Download PDF'),
-                subtitle: Text('Download to view offline'),
-                onTap: () {
-                  Navigator.pop(context);
-                  downloadFile(fileUrl, fileName, context);
-                },
-              ),
-              
-              // Share option
-              ListTile(
-                leading: Icon(Icons.share, color: Colors.purple),
-                title: Text('Share'),
-                subtitle: Text('Share link via WhatsApp, etc.'),
-                onTap: () {
-                  Navigator.pop(context);
-                  Share.share(
-                    fileUrl,
-                    subject: fileName,
-                  );
-                },
-              ),
-            ],
-          ),
+            );
+          },
         );
       },
     );
