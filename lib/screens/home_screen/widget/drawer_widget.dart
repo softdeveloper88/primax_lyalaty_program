@@ -4,7 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_zoom_drawer/flutter_zoom_drawer.dart';
-import 'package:google_sign_in/google_sign_in.dart';
+// import 'package:google_sign_in/google_sign_in.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:nb_utils/nb_utils.dart';
 import 'package:primax_lyalaty_program/main.dart';
@@ -320,52 +320,52 @@ Since this is a security-sensitive operation, you eventually are asked to login 
                 // color: Colors.red,
               ),
               onPressed: () async {
-                if (sharedPref.getBool('isSocial') ?? false) {
-                  User? user = FirebaseAuth.instance.currentUser;
-                  if (user != null) {
-                    // Get Google credentials
-                    final GoogleSignIn googleSignIn = GoogleSignIn();
-                    final GoogleSignInAccount? googleUser =
-                        await googleSignIn.signIn();
-
-                    if (googleUser == null) {
-                      print("Google sign-in aborted");
-                      return;
-                    }
-
-                    final GoogleSignInAuthentication googleAuth =
-                        await googleUser.authentication;
-
-                    final AuthCredential credential =
-                        GoogleAuthProvider.credential(
-                          accessToken: googleAuth.accessToken,
-                          idToken: googleAuth.idToken,
-                        );
-
-                    // Reauthenticate user
-                    await user.reauthenticateWithCredential(credential);
-
-                    // Delete user from Firebase Auth
-                    await user.delete();
-                    print("Account deleted successfully from Firebase");
-
-                    // Sign out user from Google and Firebase
-                    await googleSignIn.signOut();
-                    await FirebaseAuth.instance.signOut();
-                  } else {
-                    print("No user is signed in");
-                  }
-                } else {
-                  User? user = FirebaseAuth.instance.currentUser;
-                  // await FirebaseFirestore.instance.collection("users").doc(sharedPref.getString('user_id')).delete();
-                  user?.delete();
-                }
-                LoginScreen().launch(
-                  context,
-                  isNewTask: true,
-                  pageRouteAnimation: PageRouteAnimation.Slide,
-                );
-                print("User account deleted successfully");
+                // if (sharedPref.getBool('isSocial') ?? false) {
+                //   User? user = FirebaseAuth.instance.currentUser;
+                //   if (user != null) {
+                //     // Get Google credentials
+                //     final GoogleSignIn googleSignIn = GoogleSignIn();
+                //     final GoogleSignInAccount? googleUser =
+                //         await googleSignIn.signIn();
+                //
+                //     if (googleUser == null) {
+                //       print("Google sign-in aborted");
+                //       return;
+                //     }
+                //
+                //     final GoogleSignInAuthentication googleAuth =
+                //         await googleUser.authentication;
+                //
+                //     final AuthCredential credential =
+                //         GoogleAuthProvider.credential(
+                //           accessToken: googleAuth.accessToken,
+                //           idToken: googleAuth.idToken,
+                //         );
+                //
+                //     // Reauthenticate user
+                //     await user.reauthenticateWithCredential(credential);
+                //
+                //     // Delete user from Firebase Auth
+                //     await user.delete();
+                //     print("Account deleted successfully from Firebase");
+                //
+                //     // Sign out user from Google and Firebase
+                //     await googleSignIn.signOut();
+                //     await FirebaseAuth.instance.signOut();
+                //   } else {
+                //     print("No user is signed in");
+                //   }
+                // } else {
+                //   User? user = FirebaseAuth.instance.currentUser;
+                //   // await FirebaseFirestore.instance.collection("users").doc(sharedPref.getString('user_id')).delete();
+                //   user?.delete();
+                // }
+                // LoginScreen().launch(
+                //   context,
+                //   isNewTask: true,
+                //   pageRouteAnimation: PageRouteAnimation.Slide,
+                // );
+                // print("User account deleted successfully");
 
                 // Call the delete account function
               },

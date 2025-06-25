@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:credit_card_type_detector/credit_card_type_detector.dart';
-import 'package:credit_card_type_detector/models.dart';
+// import 'package:credit_card_type_detector/credit_card_type_detector.dart';
+// import 'package:credit_card_type_detector/models.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:nb_utils/nb_utils.dart';
@@ -100,7 +100,7 @@ class MyCardsScreen extends StatelessWidget {
             // Add New Card Button
             InkWell(
               onTap: () {
-                AddNewCardScreen().launch(context, pageRouteAnimation: PageRouteAnimation.Slide);
+                // AddNewCardScreen().launch(context, pageRouteAnimation: PageRouteAnimation.Slide);
               },
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
@@ -148,7 +148,7 @@ class MyCardsScreen extends StatelessWidget {
   }
   Widget _buildCreditCard(BuildContext context, Map<String, dynamic> cardData,cardId) {
     String cardNumber = cardData['cardNumber'] ?? '0000000000000000';
-    String cardType = _detectCardType(cardNumber);
+    // String cardType = _detectCardType(cardNumber);
 
     return GestureDetector(
       onTap: () {
@@ -179,7 +179,7 @@ class MyCardsScreen extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 // Image.asset("assets/chip.png", height: 30), // Chip icon
-                Image.asset(_getCardLogo(cardType), height: 30),
+                // Image.asset(_getCardLogo(cardType), height: 30),
                 TextButton(
                   onPressed: () => _deleteCard(context,cardId),
                   child: Image.asset(
@@ -237,32 +237,32 @@ class MyCardsScreen extends StatelessWidget {
   }
 
   /// **Detect Card Type Based on Number**
-  String _detectCardType(String cardNumber) {
-    var types = detectCCType(cardNumber); // Returns a Set<CreditCardType>
-
-    if (types.isNotEmpty) {
-      CreditCardType type = types.single; // Get the first detected type
-      switch (type) {
-        case CreditCardType.visa:
-          return "Visa";
-        case CreditCardType.mastercard:
-          return "Mastercard";
-        case CreditCardType.americanExpress:
-          return "American Express";
-        case CreditCardType.discover:
-          return "Discover";
-        case CreditCardType.jcb:
-          return "JCB";
-        case CreditCardType.unionPay:
-          return "UnionPay";
-        case CreditCardType.dinersClub:
-          return "Diners Club";
-        default:
-          return "Unknown";
-      }
-    }
-    return "Unknown"; // If no type is detected
-  }
+  // String _detectCardType(String cardNumber) {
+  //   var types = detectCCType(cardNumber); // Returns a Set<CreditCardType>
+  //
+  //   if (types.isNotEmpty) {
+  //     CreditCardType type = types.single; // Get the first detected type
+  //     switch (type) {
+  //       case CreditCardType.visa:
+  //         return "Visa";
+  //       case CreditCardType.mastercard:
+  //         return "Mastercard";
+  //       case CreditCardType.americanExpress:
+  //         return "American Express";
+  //       case CreditCardType.discover:
+  //         return "Discover";
+  //       case CreditCardType.jcb:
+  //         return "JCB";
+  //       case CreditCardType.unionPay:
+  //         return "UnionPay";
+  //       case CreditCardType.dinersClub:
+  //         return "Diners Club";
+  //       default:
+  //         return "Unknown";
+  //     }
+  //   }
+  //   return "Unknown"; // If no type is detected
+  // }
   /// **Mask Card Number (Show Only Last 4 Digits)**
   String _maskCardNumber(String number) {
     if (number.length < 4) return "**** **** **** ****";

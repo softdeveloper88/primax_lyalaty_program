@@ -68,6 +68,10 @@ dependencies {
     // Add the dependency for the Firebase SDK for Google Analytics
     // When using the BoM, don't specify versions in Firebase dependencies
     coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.5'
+    
+    // Force compatible versions for Firebase components to avoid Kotlin version conflicts
+    implementation 'com.google.firebase:firebase-analytics'
+    implementation 'com.google.firebase:firebase-auth'
 }
 flutter {
     source = "../.."

@@ -6,7 +6,6 @@ import 'package:firebase_remote_config/firebase_remote_config.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_downloader/flutter_downloader.dart';
-import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:nb_utils/nb_utils.dart';
 import 'package:primax_lyalaty_program/screens/splash_screen/splash_screen.dart';
 
@@ -71,35 +70,35 @@ Future<void> main() async {
     minimumFetchInterval: const Duration(minutes: 0),
   ));
 
-  try {
-    print("📡 Fetching Remote Config...");
-    bool updated = await remoteConfig.fetchAndActivate();
-    print("✅ Remote Config Updated: $updated");
-
-    // 🔍 Print all available keys and values
-    Map<String, RemoteConfigValue> allValues = remoteConfig.getAll();
-    print("🔍 All Remote Config Data:");
-    allValues.forEach((key, value) {
-      print("➡️ $key: '${value.asString()}'"); // Check if values exist
-    });
-
-    // Print specific keys
-    String stripePublishKey = remoteConfig.getString("stripe_publish_key");
-     stripeSecretKey = remoteConfig.getString("stripe_sec_key");
-
-    Stripe.publishableKey = stripePublishKey;
-
-    await Stripe.instance.applySettings();
-    if (stripePublishKey.isEmpty) {
-      print("⚠️ ERROR: 'stripe_publish_key' is EMPTY.");
-    }
-    if (stripeSecretKey.isEmpty) {
-      print("⚠️ ERROR: 'stripe_sec_key' is EMPTY.");
-    }
-
-  } catch (e) {
-    print("⚠️ ERROR: Remote Config fetch failed: $e");
-  }
+  // try {
+  //   print("📡 Fetching Remote Config...");
+  //   bool updated = await remoteConfig.fetchAndActivate();
+  //   print("✅ Remote Config Updated: $updated");
+  //
+  //   // 🔍 Print all available keys and values
+  //   Map<String, RemoteConfigValue> allValues = remoteConfig.getAll();
+  //   print("🔍 All Remote Config Data:");
+  //   allValues.forEach((key, value) {
+  //     print("➡️ $key: '${value.asString()}'"); // Check if values exist
+  //   });
+  //
+  //   // Print specific keys
+  //   String stripePublishKey = remoteConfig.getString("stripe_publish_key");
+  //    stripeSecretKey = remoteConfig.getString("stripe_sec_key");
+  //
+  //   // Stripe.publishableKey = stripePublishKey;
+  //
+  //   await Stripe.instance.applySettings();
+  //   if (stripePublishKey.isEmpty) {
+  //     print("⚠️ ERROR: 'stripe_publish_key' is EMPTY.");
+  //   }
+  //   if (stripeSecretKey.isEmpty) {
+  //     print("⚠️ ERROR: 'stripe_sec_key' is EMPTY.");
+  //   }
+  //
+  // } catch (e) {
+  //   print("⚠️ ERROR: Remote Config fetch failed: $e");
+  // }
   // Initialize Stripe with Publishable Key
 
 

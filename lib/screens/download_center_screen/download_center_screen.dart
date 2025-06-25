@@ -52,8 +52,9 @@ class _DownloadCenterScreenState extends State<DownloadCenterScreen> {
   int selectedBrand = 0; // Index for selected brand
   List<Map<String, String>> brands = [];
   List<DocumentSnapshot> documents = [];
-  bool isLoading=true;
-  
+  bool isLoading = false;  // Changed initial value to false
+  bool isLoadingDocuments = false;  // New loading state for documents only
+
   // Stream controller for better progress updates
   StreamController<Map<String, DownloadItem>> _progressController = StreamController<Map<String, DownloadItem>>.broadcast();
   Stream<Map<String, DownloadItem>> get progressStream => _progressController.stream;
@@ -157,13 +158,16 @@ class _DownloadCenterScreenState extends State<DownloadCenterScreen> {
     "Product Datasheets",
     "Product User Manuals"
   ];
-  getBrandsData()  async {
-    brands=await getBrands();
-    fetchDocuments();
+  getBrandsData() async {
     setState(() {
-
+      isLoading = true;
     });
 
+    brands = await getBrands();
+    setState(() {
+      isLoading = false;
+    });
+    fetchDocuments();  // Moved outside setState
   }
   Future<List<Map<String, String>>> getBrands() async {
     List<Map<String, String>> brands = [];
@@ -189,16 +193,28 @@ class _DownloadCenterScreenState extends State<DownloadCenterScreen> {
   }
 
   Future<void> fetchDocuments() async {
-    QuerySnapshot snapshot = await FirebaseFirestore.instance
-        .collection('downloads').orderBy('watt', descending: true)
-        .where("brand", isEqualTo: brands[selectedBrand]["name"])
-        .where("category", isEqualTo: documentCategories[selectedCategory])
-        .get();
-
     setState(() {
-      isLoading=false;
-      documents = snapshot.docs;
+      isLoadingDocuments = true;  // Only set documents loading state
     });
+
+    try {
+      QuerySnapshot snapshot = await FirebaseFirestore.instance
+          .collection('downloads').orderBy('watt', descending: true)
+          .where("brand", isEqualTo: brands[selectedBrand]["name"])
+          .where("category", isEqualTo: documentCategories[selectedCategory])
+          .get();
+
+      setState(() {
+        isLoadingDocuments = false;
+        documents = snapshot.docs;
+      });
+    } catch (e) {
+      setState(() {
+        isLoadingDocuments = false;
+        documents = [];
+      });
+      print("Error fetching documents: $e");
+    }
   }
 
   Future<void> _viewOrDownloadFile(String url, String fileName, BuildContext context) async {
@@ -725,390 +741,394 @@ class _DownloadCenterScreenState extends State<DownloadCenterScreen> {
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          child:isLoading ? Center(child: CircularProgressIndicator()): Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 16),
-              const Text(
-                "Choose Brand",
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(height: 10),
-              SizedBox(
-                height: 60,
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: brands.length,
-                  separatorBuilder: (_, __) => const SizedBox(width: 10),
-                  itemBuilder: (context, index) {
-                    return ChoiceChip(
-                      showCheckmark: false,
-                      label: Row(
-                        children: [
-                          Image.network(brands[index]["imageUrl"]!,
-                              width: 40, height: 50),
-                          const SizedBox(width: 8),
-                          Text(brands[index]["name"]!),
-                        ],
-                      ),
-                      selected: selectedBrand == index,
-                      onSelected: (bool selected) {
-                        setState(() {
-                          selectedBrand = index;
-                        });
-                        fetchDocuments();
-                      },
-                      color: WidgetStateProperty.all(Colors.grey.shade100),
-                      backgroundColor: Colors.white,
-                      selectedColor: Colors.blue.withOpacity(0.2),
-                      labelPadding: const EdgeInsets.symmetric(horizontal: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        side: BorderSide(
-                          color: selectedBrand == index
-                              ? Colors.green
-                              : Colors.grey.shade200,
+          child: isLoading
+            ? Center(child: CircularProgressIndicator())
+            : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 16),
+                const Text(
+                  "Choose Brand",
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 10),
+                SizedBox(
+                  height: 60,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: brands.length,
+                    separatorBuilder: (_, __) => const SizedBox(width: 10),
+                    itemBuilder: (context, index) {
+                      return ChoiceChip(
+                        showCheckmark: false,
+                        label: Row(
+                          children: [
+                            Image.network(brands[index]["imageUrl"]!,
+                                width: 40, height: 50),
+                            const SizedBox(width: 8),
+                            Text(brands[index]["name"]!),
+                          ],
+                        ),
+                        selected: selectedBrand == index,
+                        onSelected: (bool selected) {
+                          setState(() {
+                            selectedBrand = index;
+                          });
+                          fetchDocuments();
+                        },
+                        color: WidgetStateProperty.all(Colors.grey.shade100),
+                        backgroundColor: Colors.white,
+                        selectedColor: Colors.blue.withOpacity(0.2),
+                        labelPadding: const EdgeInsets.symmetric(horizontal: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          side: BorderSide(
+                            color: selectedBrand == index
+                                ? Colors.green
+                                : Colors.grey.shade200,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  "Document Category",
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: List.generate(documentCategories.length, (index) {
+                    return Expanded(
+                      child: GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            selectedCategory = index;
+                          });
+                          fetchDocuments();
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          margin: const EdgeInsets.symmetric(horizontal: 5),
+                          decoration: BoxDecoration(
+                            border: Border.all(
+                                color: selectedCategory == index
+                                    ? Colors.blue
+                                    : Colors.grey.shade300),
+                            borderRadius: BorderRadius.circular(20),
+                            color: selectedCategory == index
+                                ? Colors.blue.withOpacity(0.2)
+                                : Colors.white,
+                          ),
+                          child: Center(
+                            child: Text(
+                              documentCategories[index],
+                              style: TextStyle(
+                                fontWeight: FontWeight.w500,
+                                color: selectedCategory == index
+                                    ? Colors.blue
+                                    : Colors.black,
+                              ),
+                            ),
+                          ),
                         ),
                       ),
                     );
-                  },
+                  }),
                 ),
-              ),
-              const SizedBox(height: 20),
-              const Text(
-                "Document Category",
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(height: 10),
-              Row(
-                children: List.generate(documentCategories.length, (index) {
-                  return Expanded(
-                    child: GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          selectedCategory = index;
-                        });
-                        fetchDocuments();
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                        margin: const EdgeInsets.symmetric(horizontal: 5),
-                        decoration: BoxDecoration(
-                          border: Border.all(
-                              color: selectedCategory == index
-                                  ? Colors.blue
-                                  : Colors.grey.shade300),
-                          borderRadius: BorderRadius.circular(20),
-                          color: selectedCategory == index
-                              ? Colors.blue.withOpacity(0.2)
-                              : Colors.white,
-                        ),
-                        child: Center(
-                          child: Text(
-                            documentCategories[index],
-                            style: TextStyle(
-                              fontWeight: FontWeight.w500,
-                              color: selectedCategory == index
-                                  ? Colors.blue
-                                  : Colors.black,
-                            ),
-                          ),
-                        ),
-                      ),
+                const SizedBox(height: 20),
+                Expanded(
+                  child: isLoadingDocuments
+                    ? Center(child: CircularProgressIndicator())
+                    : documents.isEmpty
+                      ? const Center(child: Text("No Files Available"))
+                      : GridView.builder(
+                    padding: const EdgeInsets.only(bottom: 20),
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      crossAxisSpacing: 12,
+                      mainAxisSpacing: 12,
+                      childAspectRatio: 0.8,
                     ),
-                  );
-                }),
-              ),
-              const SizedBox(height: 20),
-              Expanded(
-                child: documents.isEmpty
-                    ? const Center(child: Text("No Files Available"))
-                    : GridView.builder(
-                  padding: const EdgeInsets.only(bottom: 20),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 12,
-                    mainAxisSpacing: 12,
-                    childAspectRatio: 0.8,
-                  ),
-                  itemCount: documents.length,
-                  itemBuilder: (context, index) {
-                    var data = documents[index].data() as Map<String, dynamic>;
-                    return GestureDetector(
-                      // Make entire item tappable to open in webview
-                      onTap: () {
-                        // Navigate to WebViewScreen with PDF handling
-                        String fileUrl = data['file_url'];
-                        String fileName = data['file_name'];
-                        
-                        // Check if it's a PDF file and use PDF viewer
-                        String finalUrl;
-                        if (fileUrl.toLowerCase().contains('.pdf') || 
-                            fileName.toLowerCase().contains('.pdf')) {
-                          // Use multiple PDF viewer options as fallback
-                          // Primary: Google Docs viewer
-                          finalUrl = 'https://docs.google.com/viewer?url=${Uri.encodeComponent(fileUrl)}&embedded=true';
-                          
-                          // Show options dialog for PDF viewing
-                          _showPdfViewingOptions(context, fileUrl, fileName);
-                          return;
-                        } else {
-                          // Use direct URL for other file types
-                          finalUrl = fileUrl;
-                        }
-                        
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => WebViewScreen(
-                              url: finalUrl,
-                              title: fileName,
+                    itemCount: documents.length,
+                    itemBuilder: (context, index) {
+                      var data = documents[index].data() as Map<String, dynamic>;
+                      return GestureDetector(
+                        // Make entire item tappable to open in webview
+                        onTap: () {
+                          // Navigate to WebViewScreen with PDF handling
+                          String fileUrl = data['file_url'];
+                          String fileName = data['file_name'];
+
+                          // Check if it's a PDF file and use PDF viewer
+                          String finalUrl;
+                          if (fileUrl.toLowerCase().contains('.pdf') ||
+                              fileName.toLowerCase().contains('.pdf')) {
+                            // Use multiple PDF viewer options as fallback
+                            // Primary: Google Docs viewer
+                            finalUrl = 'https://docs.google.com/viewer?url=${Uri.encodeComponent(fileUrl)}&embedded=true';
+
+                            // Show options dialog for PDF viewing
+                            _showPdfViewingOptions(context, fileUrl, fileName);
+                            return;
+                          } else {
+                            // Use direct URL for other file types
+                            finalUrl = fileUrl;
+                          }
+
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => WebViewScreen(
+                                url: finalUrl,
+                                title: fileName,
+                              ),
                             ),
-                          ),
-                        );
-                      },
-                      child: Stack(
-                        children: [
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(12),
-                            child: Image.network(
-                              data['image'],
-                              width: double.infinity,
-                              height: double.infinity,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) =>
-                              Container(
-                                color: Colors.grey[200],
-                                child: Center(
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(Icons.picture_as_pdf, size: 50, color: Colors.red),
-                                      SizedBox(height: 8),
-                                      Text(data['file_name'], 
-                                        textAlign: TextAlign.center,
-                                        style: TextStyle(fontSize: 10),
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ],
+                          );
+                        },
+                        child: Stack(
+                          children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: Image.network(
+                                data['image'],
+                                width: double.infinity,
+                                height: double.infinity,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) =>
+                                Container(
+                                  color: Colors.grey[200],
+                                  child: Center(
+                                    child: Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(Icons.picture_as_pdf, size: 50, color: Colors.red),
+                                        SizedBox(height: 8),
+                                        Text(data['file_name'],
+                                          textAlign: TextAlign.center,
+                                          style: TextStyle(fontSize: 10),
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ),
                               ),
                             ),
-                          ),
-                          // Bottom bar for download controls and progress
-                          Positioned(
-                            bottom: 0,
-                            right: 0,
-                            left: 0,
-                            child: Builder(
-                              builder: (context) {
-                                final fileName = data['file_name'];
-                                final downloadItem = _downloadItems[fileName];
-                                final isDownloading = downloadItem?.isDownloading ?? false;
-                                final isComplete = downloadItem?.isComplete ?? false;
-                                final hasError = downloadItem?.hasError ?? false;
-                                final progress = downloadItem?.progress ?? 0;
+                            // Bottom bar for download controls and progress
+                            Positioned(
+                              bottom: 0,
+                              right: 0,
+                              left: 0,
+                              child: Builder(
+                                builder: (context) {
+                                  final fileName = data['file_name'];
+                                  final downloadItem = _downloadItems[fileName];
+                                  final isDownloading = downloadItem?.isDownloading ?? false;
+                                  final isComplete = downloadItem?.isComplete ?? false;
+                                  final hasError = downloadItem?.hasError ?? false;
+                                  final progress = downloadItem?.progress ?? 0;
 
-                                if (isDownloading) {
-                                  // Use StreamBuilder for real-time progress updates
-                                  return StreamBuilder<Map<String, DownloadItem>>(
-                                    stream: progressStream,
-                                    initialData: _downloadItems,
-                                    builder: (context, snapshot) {
-                                      // Get the latest progress value
-                                      final items = snapshot.data;
-                                      final currentItem = items?[fileName];
-                                      final currentProgress = currentItem?.progress ?? 0;
-                                      
-                                      return Container(
-                                        padding: const EdgeInsets.symmetric(
-                                            vertical: 8, horizontal: 8),
-                                        decoration: const BoxDecoration(
-                                          color: Colors.black54,
-                                          borderRadius: BorderRadius.only(
-                                              bottomLeft: Radius.circular(12),
-                                              bottomRight: Radius.circular(12)),
-                                        ),
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            LinearProgressIndicator(
-                                              value: currentProgress > 0 ? 
-                                                    currentProgress / 100 : 0.01,
-                                              backgroundColor: Colors.grey.shade600,
-                                              valueColor: AlwaysStoppedAnimation<Color>(
-                                                  const Color(0xFF54E88C)),
-                                            ),
-                                            SizedBox(height: 4),
-                                            Text(
-                                              "Downloading: $currentProgress%",
-                                              style: TextStyle(
-                                                  color: Colors.white, fontSize: 11),
-                                            ),
-                                          ],
-                                        ),
-                                      );
-                                    }
-                                  );
-                                } else if (isComplete) {
-                                  // Show open button when download is complete
-                                  return Container(
-                                    decoration: const BoxDecoration(
-                                      color: Colors.black54,
-                                      borderRadius: BorderRadius.only(
-                                          bottomLeft: Radius.circular(12),
-                                          bottomRight: Radius.circular(12)),
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        // File name area
-                                        Expanded(
-                                          child: Padding(
-                                            padding: const EdgeInsets.symmetric(
-                                                horizontal: 10, vertical: 10),
-                                            child: Text(
-                                              fileName,
-                                              style: TextStyle(color: Colors.white),
-                                              overflow: TextOverflow.ellipsis,
-                                              maxLines: 1,
+                                  if (isDownloading) {
+                                    // Use StreamBuilder for real-time progress updates
+                                    return StreamBuilder<Map<String, DownloadItem>>(
+                                      stream: progressStream,
+                                      initialData: _downloadItems,
+                                      builder: (context, snapshot) {
+                                        // Get the latest progress value
+                                        final items = snapshot.data;
+                                        final currentItem = items?[fileName];
+                                        final currentProgress = currentItem?.progress ?? 0;
+
+                                        return Container(
+                                          padding: const EdgeInsets.symmetric(
+                                              vertical: 8, horizontal: 8),
+                                          decoration: const BoxDecoration(
+                                            color: Colors.black54,
+                                            borderRadius: BorderRadius.only(
+                                                bottomLeft: Radius.circular(12),
+                                                bottomRight: Radius.circular(12)),
+                                          ),
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              LinearProgressIndicator(
+                                                value: currentProgress > 0 ?
+                                                      currentProgress / 100 : 0.01,
+                                                backgroundColor: Colors.grey.shade600,
+                                                valueColor: AlwaysStoppedAnimation<Color>(
+                                                    const Color(0xFF54E88C)),
+                                              ),
+                                              SizedBox(height: 4),
+                                              Text(
+                                                "Downloading: $currentProgress%",
+                                                style: TextStyle(
+                                                    color: Colors.white, fontSize: 11),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                      }
+                                    );
+                                  } else if (isComplete) {
+                                    // Show open button when download is complete
+                                    return Container(
+                                      decoration: const BoxDecoration(
+                                        color: Colors.black54,
+                                        borderRadius: BorderRadius.only(
+                                            bottomLeft: Radius.circular(12),
+                                            bottomRight: Radius.circular(12)),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          // File name area
+                                          Expanded(
+                                            child: Padding(
+                                              padding: const EdgeInsets.symmetric(
+                                                  horizontal: 10, vertical: 10),
+                                              child: Text(
+                                                fileName,
+                                                style: TextStyle(color: Colors.white),
+                                                overflow: TextOverflow.ellipsis,
+                                                maxLines: 1,
+                                              ),
                                             ),
                                           ),
-                                        ),
-                                        // Open button
-                                        GestureDetector(
-                                          onTap: () {
-                                            if (downloadItem?.filePath != null) {
-                                              openDownloadedFile(downloadItem!.filePath!);
-                                            }
-                                          },
-                                          behavior: HitTestBehavior.opaque,
-                                          child: Container(
-                                            padding: const EdgeInsets.symmetric(
-                                                vertical: 10, horizontal: 15),
-                                            decoration: const BoxDecoration(
-                                              gradient: LinearGradient(
-                                                colors: [Color(0xFF47C6EB), Color(0xFF54E88C)],
-                                                begin: Alignment.topLeft,
-                                                end: Alignment.bottomRight,
+                                          // Open button
+                                          GestureDetector(
+                                            onTap: () {
+                                              if (downloadItem?.filePath != null) {
+                                                openDownloadedFile(downloadItem!.filePath!);
+                                              }
+                                            },
+                                            behavior: HitTestBehavior.opaque,
+                                            child: Container(
+                                              padding: const EdgeInsets.symmetric(
+                                                  vertical: 10, horizontal: 15),
+                                              decoration: const BoxDecoration(
+                                                gradient: LinearGradient(
+                                                  colors: [Color(0xFF47C6EB), Color(0xFF54E88C)],
+                                                  begin: Alignment.topLeft,
+                                                  end: Alignment.bottomRight,
+                                                ),
+                                                borderRadius: BorderRadius.only(
+                                                    bottomRight: Radius.circular(12)),
                                               ),
-                                              borderRadius: BorderRadius.only(
-                                                  bottomRight: Radius.circular(12)),
+                                              child: Text(
+                                                "OPEN",
+                                                style: TextStyle(
+                                                    color: Colors.white,
+                                                    fontWeight: FontWeight.bold),
+                                              ),
                                             ),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  } else if (hasError) {
+                                    // Show retry button if there was an error
+                                    return Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          vertical: 8, horizontal: 10),
+                                      decoration: const BoxDecoration(
+                                        color: Colors.red,
+                                        borderRadius: BorderRadius.only(
+                                            bottomLeft: Radius.circular(12),
+                                            bottomRight: Radius.circular(12)),
+                                      ),
+                                      child: Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Text(
+                                            "Download Failed",
+                                            style: TextStyle(color: Colors.white),
+                                          ),
+                                          GestureDetector(
+                                            onTap: () => downloadFile(data['file_url'], fileName, context),
+                                            behavior: HitTestBehavior.opaque,
                                             child: Text(
-                                              "OPEN",
+                                              "RETRY",
                                               style: TextStyle(
                                                   color: Colors.white,
                                                   fontWeight: FontWeight.bold),
                                             ),
                                           ),
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                } else if (hasError) {
-                                  // Show retry button if there was an error
-                                  return Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        vertical: 8, horizontal: 10),
-                                    decoration: const BoxDecoration(
-                                      color: Colors.red,
-                                      borderRadius: BorderRadius.only(
-                                          bottomLeft: Radius.circular(12),
-                                          bottomRight: Radius.circular(12)),
-                                    ),
-                                    child: Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        ],
+                                      ),
+                                    );
+                                  } else {
+                                    // Default download button
+                                    return Row(
                                       children: [
-                                        Text(
-                                          "Download Failed",
-                                          style: TextStyle(color: Colors.white),
+                                        // File info area
+                                        Expanded(
+                                          child: Container(
+                                            padding: EdgeInsets.symmetric(
+                                                vertical: 10, horizontal: 6),
+                                            decoration: BoxDecoration(
+                                              color: Colors.black54,
+                                              borderRadius: BorderRadius.only(
+                                                  bottomLeft: Radius.circular(12)),
+                                            ),
+                                            child: Padding(
+                                              padding: const EdgeInsets.only(
+                                                  left: 6.0, right: 6.0),
+                                              child: Text(
+                                                fileName,
+                                                style:
+                                                    TextStyle(color: Colors.white),
+                                                overflow: TextOverflow.ellipsis,
+                                                maxLines: 1,
+                                              ),
+                                            ),
+                                          ),
                                         ),
+                                        // Download button
                                         GestureDetector(
-                                          onTap: () => downloadFile(data['file_url'], fileName, context),
+                                          onTap: () {
+                                            // Prevent parent GestureDetector from triggering
+                                            downloadFile(data['file_url'], fileName, context);
+                                          },
                                           behavior: HitTestBehavior.opaque,
-                                          child: Text(
-                                            "RETRY",
-                                            style: TextStyle(
-                                                color: Colors.white,
-                                                fontWeight: FontWeight.bold),
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(
+                                                vertical: 10, horizontal: 12),
+                                            decoration: const BoxDecoration(
+                                              gradient: LinearGradient(
+                                                colors: [
+                                                  Color(0xFF47C6EB),
+                                                  Color(0xFF54E88C)
+                                                ],
+                                                begin: Alignment.topLeft,
+                                                end: Alignment.bottomRight,
+                                              ),
+                                              borderRadius: BorderRadius.only(
+                                                  bottomRight:
+                                                      Radius.circular(12)),
+                                            ),
+                                            child: SvgPicture.asset(
+                                              height: 25,
+                                              width: 25,
+                                              'assets/icons/ic_download.svg',
+                                              color: Colors.white,
+                                            ),
                                           ),
                                         ),
                                       ],
-                                    ),
-                                  );
-                                } else {
-                                  // Default download button
-                                  return Row(
-                                    children: [
-                                      // File info area
-                                      Expanded(
-                                        child: Container(
-                                          padding: EdgeInsets.symmetric(
-                                              vertical: 10, horizontal: 6),
-                                          decoration: BoxDecoration(
-                                            color: Colors.black54,
-                                            borderRadius: BorderRadius.only(
-                                                bottomLeft: Radius.circular(12)),
-                                          ),
-                                          child: Padding(
-                                            padding: const EdgeInsets.only(
-                                                left: 6.0, right: 6.0),
-                                            child: Text(
-                                              fileName,
-                                              style:
-                                                  TextStyle(color: Colors.white),
-                                              overflow: TextOverflow.ellipsis,
-                                              maxLines: 1,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                      // Download button
-                                      GestureDetector(
-                                        onTap: () {
-                                          // Prevent parent GestureDetector from triggering
-                                          downloadFile(data['file_url'], fileName, context);
-                                        },
-                                        behavior: HitTestBehavior.opaque,
-                                        child: Container(
-                                          padding: const EdgeInsets.symmetric(
-                                              vertical: 10, horizontal: 12),
-                                          decoration: const BoxDecoration(
-                                            gradient: LinearGradient(
-                                              colors: [
-                                                Color(0xFF47C6EB),
-                                                Color(0xFF54E88C)
-                                              ],
-                                              begin: Alignment.topLeft,
-                                              end: Alignment.bottomRight,
-                                            ),
-                                            borderRadius: BorderRadius.only(
-                                                bottomRight:
-                                                    Radius.circular(12)),
-                                          ),
-                                          child: SvgPicture.asset(
-                                            height: 25,
-                                            width: 25,
-                                            'assets/icons/ic_download.svg',
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  );
-                                }
-                              },
+                                    );
+                                  }
+                                },
+                              ),
                             ),
-                          ),
-                      ],
-                    ));
-                  },
+                        ],
+                      ));
+                    },
+                  ),
                 ),
-              ),
-            ],
-          ),
+              ],
+            ),
         ),
       ),
     );
