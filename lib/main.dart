@@ -1,10 +1,7 @@
 import 'dart:isolate';
 import 'dart:ui';
-import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_remote_config/firebase_remote_config.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_downloader/flutter_downloader.dart';
 import 'package:nb_utils/nb_utils.dart';
 import 'package:primax_lyalaty_program/screens/splash_screen/splash_screen.dart';
@@ -62,13 +59,13 @@ Future<void> main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-  FirebaseAnalytics analytics = FirebaseAnalytics.instance;
-  final FirebaseRemoteConfig remoteConfig = FirebaseRemoteConfig.instance;
-
-  await remoteConfig.setConfigSettings(RemoteConfigSettings(
-    fetchTimeout: const Duration(minutes: 1),
-    minimumFetchInterval: const Duration(minutes: 0),
-  ));
+  // FirebaseAnalytics analytics = FirebaseAnalytics.instance;
+  // final FirebaseRemoteConfig remoteConfig = FirebaseRemoteConfig.instance;
+  //
+  // await remoteConfig.setConfigSettings(RemoteConfigSettings(
+  //   fetchTimeout: const Duration(minutes: 1),
+  //   minimumFetchInterval: const Duration(minutes: 0),
+  // ));
 
   // try {
   //   print("📡 Fetching Remote Config...");
