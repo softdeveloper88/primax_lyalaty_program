@@ -234,7 +234,6 @@ class _NewsEventScreenState extends State<NewsEventScreen> with SingleTickerProv
                     ),
                   ),
                 ),
-
                 // News/Events List
                 SliverPadding(
                   padding: const EdgeInsets.fromLTRB(16, 10, 16, 20),

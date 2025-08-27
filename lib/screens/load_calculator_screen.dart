@@ -14,30 +14,67 @@ class _LoadCalculatorScreenState extends State<LoadCalculatorScreen> {
   final Map<String, String?> selectedAppliances = {};
 
   final Map<String, List<String>> applianceOptions = {
-    "Fan": ["A/C Fan", "Ceiling Fan", "Exhaust Fan"],
-    "Tubelight": ["36W", "40W"],
-    "LED Bulb": ["7W", "10W", "15W"],
-    "Refrigerator": ["Inverter Refrigerator", "Double Door"],
-    "Washing Machine": ["Inverter Washing Machine", "Top Load"],
-    "Iron": ["Dry Iron", "Steam Iron"],
-    "Split AC": ["1.0 Ton", "1.5 Ton", "2 Ton"],
-    "Inverter AC": ["1.0 Ton", "1.5 Ton"],
-    "Water Pump": ["0.5 HP", "1 HP"],
+    "Fan": ["A/C Fan", "DC Fan", "Inverter Fan"],
+    "Tubelight": ["36W", "40W",'60W'],
+    "LED Bulb": ["7W", "10W","12W", "15W","18W"],
+    "Refrigerator": ["Inverter Refrigerator", "AC Refrigerator"],
+    "Washing Machine": ["Inverter Washing Machine", "AC Washing Machine"],
+    "Iron": ["Iron(Plastic Body)", "Iron(Metal Body)"],
+    "Split AC": ["1.0 Ton", "1.5 Ton", "2.0 Ton","4.0 Ton"],
+    "Inverter AC": ["1.0 Ton", "1.5 Ton","2.0 Ton","4.0 Ton"],
+
+    "Water Pump Total Quality": ["0.5 HP", "1.0 HP","1.5 HP","2.0 HP"],
     "Microwave": ["Microwave"],
     "Computer": ["Computer"],
     "Laptop": ["Laptop"]
   };
 
   final Map<String, int> powerRatings = {
-    "Fan": 110,
+    // Fan options
+    "A/C Fan": 110,
+    "DC Fan": 55,
+    "Inverter Fan": 30,
+    
+    // Tubelight options
     "36W": 36,
+    "40W": 40,
+    "60W": 60,
+    
+    // LED Bulb options
+    "5W": 5,
     "7W": 7,
+    "12W": 12,
+    "15W": 15,
+    "18W": 18,
+    
+    // Refrigerator options
     "Inverter Refrigerator": 350,
+    "AC Refrigerator": 780,
+    
+    // Washing Machine options
     "Inverter Washing Machine": 500,
-    "Dry Iron": 800,
+    "AC Washing Machine": 1200,
+    
+    // Iron options
+    "Iron(Plastic Body)": 800,
+    "Iron(Metal Body)": 1200,
+    
+    // Split AC options
     "1.0 Ton": 1250,
-    "1.5 Ton": 1500,
-    "1 HP": 750,
+    "1.5 Ton": 2000,
+    "2.0 Ton": 2500,
+    "4.0 Ton": 5000,
+    
+    // Inverter AC options (more efficient)
+    // Using same keys but different values handled in calculation
+    
+    // Water Pump options
+    "0.5 HP": 375,
+    "1.0 HP": 750,
+    "1.5 HP": 1125,
+    "2.0 HP": 1500,
+    
+    // Other appliances
     "Microwave": 1500,
     "Computer": 250,
     "Laptop": 100,
@@ -51,6 +88,27 @@ class _LoadCalculatorScreenState extends State<LoadCalculatorScreen> {
     }
   }
 
+  int _getPowerRating(String applianceType, String selectedOption) {
+    // Handle Inverter AC with different power ratings than Split AC
+    if (applianceType == "Inverter AC") {
+      switch (selectedOption) {
+        case "1.0 Ton":
+          return 900;
+        case "1.5 Ton":
+          return 1200;
+        case "2.0 Ton":
+          return 1800;
+        case "4.0 Ton":
+          return 3600;
+        default:
+          return 1200;
+      }
+    }
+    
+    // For all other appliances, use the powerRatings map
+    return powerRatings[selectedOption] ?? 100;
+  }
+
   void _goToSummary() {
     Map<String, dynamic> selectedData = {};
 
@@ -58,9 +116,10 @@ class _LoadCalculatorScreenState extends State<LoadCalculatorScreen> {
       if (selectedAppliances[key] != null && selectedAppliances[key]!.isNotEmpty) {
         int quantity = int.tryParse(quantityControllers[key]!.text) ?? 0;
         if (quantity > 0) {
+          int powerPerUnit = _getPowerRating(key, selectedAppliances[key]!);
           selectedData[key] = {
             "type": selectedAppliances[key]!,
-            "power": (powerRatings[selectedAppliances[key]!] ?? 1)*quantity,
+            "power": powerPerUnit * quantity,
             "quantity": quantity,
           };
         }
